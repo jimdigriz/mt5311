@@ -5,6 +5,7 @@
 -- Everything is guess work, so errors are guarenteed!
 
 local registers = {
+	[0x001e] = "?",							-- "\x40\x00\x02"
 	[0x6c31] = "Firmware Version",					-- "\x75\x02\x02" = 750202
 	[0x6c32] = "Firmware Date (DDMMYY)",				-- "\x09\x07\x18" = 090718 (might be US format!)
 	[0x6c33] = "Firmware Time (HHMMSS)",				-- "\x17\x30\x44" = 173044
@@ -41,6 +42,15 @@ local registers = {
 	[0x7eac] = "VCXO (Voltage Controlled Crystal Oscillator?)",	-- "\x4c\xa0\0" = 0x4ca000
 }
 
+local vs_status = {
+	[0] = "Success",
+	[255] = "No error"
+}
+
+local vs_request_payload_type = {
+	[0] = "Request"
+}
+
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
 local pf_hdr = ProtoField.bytes("ebm.flags")
@@ -53,8 +63,11 @@ local f_code = Field.new("ebm.flags.code")
 local pf_seq = ProtoField.uint32("ebm.seq", "Sequence Number")
 table.insert(proto.fields, pf_seq)
 
-local pf_unknown = ProtoField.uint8("ebm.unknown", "Unknown")
-table.insert(proto.fields, pf_unknown)
+local pf_status = ProtoField.uint8("ebm.status", "Status", nil, vs_status)
+table.insert(proto.fields, pf_status)
+
+local pf_type = ProtoField.uint8("ebm.type", "Type", nil, vs_request_payload_type)
+table.insert(proto.fields, pf_type)
 
 local pf_addr = ProtoField.uint16("ebm.addr", "Address", base.HEX)
 table.insert(proto.fields, pf_addr)
@@ -84,29 +97,24 @@ function proto.dissector (tvb, pinfo, tree)
 	--  0                   1                   2                   3
 	--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	-- |             ?????             |     Flags     |    Sequence   :
+	-- |                     Flags                     |    Sequence   :
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	-- :                           Sequence                            |
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	-- |    Unknown    |            Payload
+	-- |     Status    |            Payload
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	--
-	-- Flags
+	-- Code (C) field
 	--
-	--        0 1 2 3 4 5 6 7
-	--       +-+-+-+-+-+-+-+-+
-	--       |C 0 0 0 0 0 0 1|
-	--       +-+-+-+-+-+-+-+-+
+	--    0 - Request
 	--
-	--    C  Code field
+	--    1 - Response
 	--
-	--       0 Request
+	-- Status
 	--
-	--       1 Response
+	--    0 - Success
 	--
-	-- Unknown
-	--
-	--    When C = 0 (Request)
+	--  255 - Not applicable
 
 	local hdr_tvb = tvb(0, 8)
 	local hdr = subtree:add(proto, hdr_tvb(), "Header")
@@ -117,6 +125,8 @@ function proto.dissector (tvb, pinfo, tree)
 
 	local response = f_code()()
 
+	pinfo.cols.info:append(response and ": Response" or ": Query")
+
 	if bit.band(hdr_flags_tvb:uint(2, 1), 0xff - 0x80 - 0x01) ~= 0 then
 		hdr_flags:add_proto_expert_info(ef_assert, "Flags bits 1-6 not all unset")
 	end
@@ -125,25 +135,99 @@ function proto.dissector (tvb, pinfo, tree)
 	end
 
 	hdr:add(pf_seq, hdr_tvb(3, 4))
-	hdr:add(pf_unknown, hdr_tvb(7, 1))
-	local hdr_unknown_tvb = hdr_tvb(7, 1)
-	if not ((response and hdr_unknown_tvb:uint() == 0x00) or (not response and hdr_unknown_tvb:uint() == 0xff)) then
-		hdr_flags:add_proto_expert_info(ef_assert, "Unknown has unexpected value")
+	hdr:add(pf_status, hdr_tvb(7, 1))
+	local hdr_status_tvb = hdr_tvb(7, 1)
+	if not ((response and hdr_status_tvb:uint() == 0x00) or (not response and hdr_status_tvb:uint() == 0xff)) then
+		hdr:add_proto_expert_info(ef_assert, "Status has unexpected value")
 	end
 
 	local payload_tvb = tvb(8)
 	local payload = subtree:add(proto, payload_tvb(), "Payload")
 
+	local padding_tvb
 	if response then
+		-- Response (C = 1)
+		--
+		--  0                   1                   2                   3
+		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |                    Data                       |    Padding    :
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- :            Padding
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		--
+		-- Data
+		--
+		--    Three (3) octets of data
+		--
+		-- Padding
+		--
+		--    35 octets zeroed out
+
 		payload:add(pf_data, payload_tvb(0, 3))
-		payload:add(pf_padding, payload_tvb(3))
+		padding_tvb  = payload_tvb(3)
+		if padding_tvb:len() ~= 35 then
+			payload:add_proto_expert_info(ef_assert, "Padding expected to be 35 octets")
+		end
 	else
+		-- Request (C = 0)
+		--
+		--  0                   1                   2                   3
+		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |     Flags     |     Type      |             Address           |
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |        Address Width          |             Padding           :
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- :            Padding
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		--
+		-- Flags
+		--
+		--        0 1 2 3 4 5 6 7
+		--       +-+-+-+-+-+-+-+-+
+		--       |0 0 0 0 0 0 0 H|
+		--       +-+-+-+-+-+-+-+-+
+		--
+		--    H  MUST be set
+		--
+		-- Type
+		--
+		--    0 - octets
+		--
+		-- Address
+		--
+		--    Unsigned 16-bit integer providing the memory address to read
+		--
+		-- Address Width
+		--
+		--    Unsigned 16-bit integer providing the number of octets to return.
+		--    The value MUST be three (3).
+		--
+		-- Padding
+		--
+		--    36 octets zeroed out
+
+		if bit.band(payload_tvb(0, 1):uint(), 0x01) ~= 1 then
+			payload:add_proto_expert_info(ef_assert, "Request Flags bit 7 not set")
+		end
+
+		payload:add(pf_type, payload_tvb(1, 1))
 		payload:add(pf_addr, payload_tvb(2, 2))
 		payload:add(pf_addr_width, payload_tvb(4, 2))
-		payload:add(pf_padding, payload_tvb(6))
+		padding_tvb  = payload_tvb(6)
+		if padding_tvb:len() ~= 36 then
+			payload:add_proto_expert_info(ef_assert, "Padding expected to be 36 octets")
+		end
 	end
 
-	pinfo.cols.info:append(response and ": Response" or ": Query")
+	payload:add(pf_padding, padding_tvb())
+	for i=0,padding_tvb:len() - 1 do
+		if padding_tvb(i, 1):uint() ~= 0x00 then
+			payload:add_proto_expert_info(ef_assert, "Padding has non-zero bytes")
+			break
+		end
+	end
 
 	return len
 end
