@@ -5,9 +5,14 @@
 -- Everything is guess work, so errors are guarenteed!
 
 local registers = {
+	[0x6c31] = "Firmware Version",					-- "\x75\x02\x02" = 750202
+	[0x6c32] = "Firmware Date (DDMMYY)",				-- "\x09\x07\x18" = 090718 (might be US format!)
+	[0x6c33] = "Firmware Time (HHMMSS)",				-- "\x17\x30\x44" = 173044
+	[0x6c34] = "?",							-- "\x80\x15\x68"
+	[0x6c35] = "?",							-- "\x00\x03\x29"
+	[0x6c36] = "?",							-- "GAT"
 	[0x6f2f] = "Electrical Length",					-- "\0\0\xb9" = 185m
 	[0x7d90] = "Carrier Set",					-- "\0\0\x03" = 3
-	[0x7eac] = "VCXO (Voltage Controlled Crystal Oscillator?)",	-- "\x4c\xa0\0" = 0x4ca000
 
 	-- Far End
 	[0x79ce] = "Inventory Version [ 0 -  2]",			-- "v12"
@@ -33,6 +38,7 @@ local registers = {
 	[0x79ed] = "Inventory Version [ 9 - 11]",			-- " MT"
 	[0x79ee] = "Inventory Version [12 - 14]",			-- "531"
 	[0x79ef] = "Inventory Version [15 - 17]",			-- "1\0\0"
+	[0x7eac] = "VCXO (Voltage Controlled Crystal Oscillator?)",	-- "\x4c\xa0\0" = 0x4ca000
 }
 
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
