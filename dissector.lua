@@ -1,44 +1,45 @@
 -- The Ethernet Boot & Management (EBM) protocol smells like an
--- RPC for I2C or something. So you ask for an address and it
--- returns 3 bytes that correspond to an address slot.
+-- RPC for I2C or something. So you ask for a register and it
+-- returns its value as 3 octets.
 --
 -- Everything is guess work, so errors are guarenteed!
 
-local registers = {
-	[0x001e] = "?",							-- "\x40\x00\x02"
-	[0x6c31] = "Firmware Version",					-- "\x75\x02\x02" = 750202
-	[0x6c32] = "Firmware Date (DDMMYY)",				-- "\x09\x07\x18" = 090718 (might be US format!)
-	[0x6c33] = "Firmware Time (HHMMSS)",				-- "\x17\x30\x44" = 173044
-	[0x6c34] = "?",							-- "\x80\x15\x68"
-	[0x6c35] = "?",							-- "\x00\x03\x29"
-	[0x6c36] = "?",							-- "GAT"
-	[0x6f2f] = "Electrical Length",					-- "\0\0\xb9" = 185m
-	[0x7d90] = "Carrier Set",					-- "\0\0\x03" = 3
+local vs_register = {
+--	[0x001e] = "",						-- "\x40\x00\x02"
+
+	[0x6c31] = "Firmware Version",				-- "\x75\x02\x02" = 750202
+	[0x6c32] = "Firmware Date (DDMMYY)",			-- "\x09\x07\x18" = 090718 (might be US format!)
+	[0x6c33] = "Firmware Time (HHMMSS)",			-- "\x17\x30\x44" = 173044
+--	[0x6c34] = "",						-- "\x80\x15\x68"
+--	[0x6c35] = "",						-- "\x00\x03\x29"
+--	[0x6c36] = "",						-- "\x47\x41\x54"
+	[0x6f2f] = "Electrical Length",				-- "\0\0\xb9" = 185m
+	[0x7d90] = "Carrier Set",				-- "\0\0\x03" = 3
 
 	-- Far End
-	[0x79ce] = "Inventory Version [ 0 -  2]",			-- "v12"
-	[0x79cf] = "Inventory Version [ 3 -  5]",			-- ".00"
-	[0x79d0] = "Inventory Version [ 6 -  8]",			-- ".28"
-	[0x79d1] = "Inventory Version [ 9 - 11]",			-- "   "
-	[0x79d2] = "Inventory Version [12 - 14]",			-- "   "
-	[0x79d3] = "Inventory Version [15 - 17]",			-- "\0\0\0"
-	[0x7d98] = "Peer Vendor ID [2,0,1]",				-- "CBD"
-	[0x7d99] = "Peer Vendor ID [SI1,SI0,3]",			-- "\xC1\xC0" .. "M"
---	[0x7d99] = "Peer Vendor Specific Information [1,0,_]",		-- "\xC1\xC0" .. "M"
-	[0x7ea4] = "MAC Address [ 0 - 2]",				-- "\0\0\0"
-	[0x7ea5] = "MAC Address [ 3 - 5]",				-- "\0\0\0"
-	[0x7ea6] = "MAC Address [ 6 - 8]",				-- "\0\0\0"
-	[0x7ea7] = "MAC Address [ 9 -11]",				-- "\0\0\0"
+	[0x79ce] = "Inventory Version [0:2]",			-- "v12"
+	[0x79cf] = "Inventory Version [3:5]",			-- ".00"
+	[0x79d0] = "Inventory Version [6:8]",			-- ".28"
+	[0x79d1] = "Inventory Version [9:11]",			-- "   "
+	[0x79d2] = "Inventory Version [12:14]",			-- "   "
+	[0x79d3] = "Inventory Version [15:17]",			-- "\0\0\0"
+	[0x7d98] = "Peer Vendor ID [2,0,1]",			-- "CBD"
+	[0x7d99] = "Peer Vendor ID [SI1,SI0,3]",		-- "\xC1\xC0" .. "M"
+--	[0x7d99] = "Peer Vendor Specific Information [1,0,_]",	-- "\xC1\xC0" .. "M"
+	[0x7ea4] = "MAC Address [0:2]",				-- "\0\0\0"
+	[0x7ea5] = "MAC Address [3:5]",				-- "\0\0\0"
+	[0x7ea6] = "MAC Address [6:8]",				-- "\0\0\0"
+	[0x7ea7] = "MAC Address [9:11]",			-- "\0\0\0"
 
 	-- Near End
-	[0x79e4] = "Peer Vendor ID [_,_,0]",				-- "\0\0M",
-	[0x79e5] = "Peer Vendor ID [1-3]",				-- "ETA",
-	[0x79ea] = "Inventory Version [ 0 -  2]",			-- "1_6"
-	[0x79eb] = "Inventory Version [ 3 -  5]",			-- "0_8"
-	[0x79ec] = "Inventory Version [ 6 -  8]",			-- "255"
-	[0x79ed] = "Inventory Version [ 9 - 11]",			-- " MT"
-	[0x79ee] = "Inventory Version [12 - 14]",			-- "531"
-	[0x79ef] = "Inventory Version [15 - 17]",			-- "1\0\0"
+	[0x79e4] = "Peer Vendor ID [_,_,0]",			-- "\0\0M",
+	[0x79e5] = "Peer Vendor ID [1:3]",			-- "ETA",
+	[0x79ea] = "Inventory Version [0:2]",			-- "1_6"
+	[0x79eb] = "Inventory Version [3:5]",			-- "0_8"
+	[0x79ec] = "Inventory Version [6:8]",			-- "255"
+	[0x79ed] = "Inventory Version [9:11]",			-- " MT"
+	[0x79ee] = "Inventory Version [12:14]",			-- "531"
+	[0x79ef] = "Inventory Version [15:17]",			-- "1\0\0"
 	[0x7eac] = "VCXO (Voltage Controlled Crystal Oscillator?)",	-- "\x4c\xa0\0" = 0x4ca000
 }
 
@@ -69,11 +70,11 @@ table.insert(proto.fields, pf_status)
 local pf_type = ProtoField.uint8("ebm.type", "Type", nil, vs_request_payload_type)
 table.insert(proto.fields, pf_type)
 
-local pf_addr = ProtoField.uint16("ebm.addr", "Address", base.HEX)
-table.insert(proto.fields, pf_addr)
+local pf_reg = ProtoField.uint16("ebm.reg", "Register", base.HEX, vs_register)
+table.insert(proto.fields, pf_reg)
 
-local pf_addr_width = ProtoField.uint16("ebm.addr_width", "Address Width")
-table.insert(proto.fields, pf_addr_width)
+local pf_regsize = ProtoField.uint16("ebm.regsize", "Register Size")
+table.insert(proto.fields, pf_regsize)
 
 local pf_data = ProtoField.bytes("ebm.data", "Data")
 table.insert(proto.fields, pf_data)
@@ -195,11 +196,11 @@ function proto.dissector (tvb, pinfo, tree)
 		--
 		--    0 - octets
 		--
-		-- Address
+		-- Register
 		--
-		--    Unsigned 16-bit integer providing the memory address to read
+		--    Unsigned 16-bit integer providing the register number to read
 		--
-		-- Address Width
+		-- Register Width
 		--
 		--    Unsigned 16-bit integer providing the number of octets to return.
 		--    The value MUST be three (3).
@@ -213,8 +214,11 @@ function proto.dissector (tvb, pinfo, tree)
 		end
 
 		payload:add(pf_type, payload_tvb(1, 1))
-		payload:add(pf_addr, payload_tvb(2, 2))
-		payload:add(pf_addr_width, payload_tvb(4, 2))
+		payload:add(pf_reg, payload_tvb(2, 2))
+		payload:add(pf_regsize, payload_tvb(4, 2))
+		if payload_tvb(4, 2):uint() ~= 3 then
+			payload:add_proto_expert_info(ef_assert, "Register Size expected to be 3")
+		end
 		padding_tvb  = payload_tvb(6)
 		if padding_tvb:len() ~= 36 then
 			payload:add_proto_expert_info(ef_assert, "Padding expected to be 36 octets")
