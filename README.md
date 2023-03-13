@@ -3,8 +3,9 @@ Utilities used to work with the Metanoia/Proscend VDSL2 SFP Modem.
 ## Related Links
 
  * VDSL2 SFP Modem:
-    * [Metanoia MT-V5311](https://metanoia-comm.com/products/xdsl/vdsl2-sfp/)
+    * [Metanoia MT-V5311](https://metanoia-comm.com/products/xdsl/vdsl2-sfp/) - seems to be the OEM
     * [Proscend 180-T](https://www.proscend.com/en/product/VDSL2-SFP-Modem-Telco/180-T.html)
+    * [ALLNET ALL4781-VDSL2-SFP](https://www.allnet.de/en/allnet-brand/produkte/modems-router/sfp-vdsl2-bridge-modem)
  * Non-official public materials regarding the module
     * [Proscend SOS/ROC Firmware Update](https://youtu.be/fdCl3nxgEyA)
     * Duxtel:
