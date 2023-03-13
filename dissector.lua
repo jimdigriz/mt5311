@@ -1,6 +1,6 @@
 -- The Ethernet Boot & Management (EBM) protocol smells like an
--- RPC for I2C or something. So you ask for a register and it
--- returns its value as 3 octets.
+-- RPC for HDLC/I2C or something. So you ask for a register and
+-- it returns its value as 3 octets.
 --
 -- Everything is guess work, so errors are guarenteed!
 
@@ -24,7 +24,7 @@ local vs_register = {
 	[0x79d2] = "Inventory Version [12:14]",			-- "   "
 	[0x79d3] = "Inventory Version [15:17]",			-- "\0\0\0"
 	[0x7d98] = "Peer Vendor ID [2,0,1]",			-- "CBD"
-	[0x7d99] = "Peer Vendor ID [SI1,SI0,3]",		-- "\xC1\xC0" .. "M"
+	[0x7d99] = "Peer Vendor ID (and SpecInfo) [SI1,SI0,3]",	-- "\xC1\xC0" .. "M"
 --	[0x7d99] = "Peer Vendor Specific Information [1,0,_]",	-- "\xC1\xC0" .. "M"
 	[0x7ea4] = "MAC Address [0:2]",				-- "\0\0\0"
 	[0x7ea5] = "MAC Address [3:5]",				-- "\0\0\0"
