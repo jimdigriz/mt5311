@@ -5,6 +5,9 @@
 -- Everything is guess work, so errors are guarenteed!
 
 local vs_register = {
+	-- System Table
+
+
 --	[0x001e] = "",						-- "\x40\x00\x02"
 
 	[0x6c31] = "Firmware Version",				-- "\x75\x02\x02" = 750202
@@ -13,8 +16,9 @@ local vs_register = {
 --	[0x6c34] = "",						-- "\x80\x15\x68"
 --	[0x6c35] = "",						-- "\x00\x03\x29"
 --	[0x6c36] = "",						-- "\x47\x41\x54"
-	[0x6f2f] = "Electrical Length",				-- "\0\0\xb9" = 185m
-	[0x7d90] = "Carrier Set",				-- "\0\0\x03" = 3
+	[0x6f00] = "Bootcode Version",				-- "\xff\x00\x03" = ff0003
+	[0x6f2f] = "Electrical Length",				-- "\x00\x00\xb9" = 185m
+	[0x7d90] = "Carrier Set",				-- "\x00\x00\x03" = 3
 
 	-- Far End
 	[0x79ce] = "Inventory Version [0:2]",			-- "v12"
@@ -48,23 +52,25 @@ local vs_status = {
 	[255] = "No error"
 }
 
-local vs_request_payload_type = {
-	[0] = "Request"
+local vs_cmd = {
+	[1] = "Read Register"
 }
 
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
 proto.fields.hdr = ProtoField.bytes("ebm.flags")
-proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
-proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
 proto.fields.code = ProtoField.bool("ebm.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
 proto.fields.seq = ProtoField.uint32("ebm.seq", "Sequence Number")
+proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
+proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
 proto.fields.status = ProtoField.uint8("ebm.status", "Status", nil, vs_status)
-proto.fields.type = ProtoField.uint8("ebm.type", "Type", nil, vs_request_payload_type)
-proto.fields.reg = ProtoField.uint16("ebm.reg", "Register", base.HEX, vs_register)
-proto.fields.regsize = ProtoField.uint16("ebm.regsize", "Register Size")
+
+proto.fields.cmd = ProtoField.uint8("ebm.cmd", "Type", nil, vs_cmd)
+--
+proto.fields.cmd_read_reg = ProtoField.uint16("ebm.cmd.read_reg", "Address", base.HEX, vs_register)
+proto.fields.cmd_read_len = ProtoField.uint16("ebm.cmd.read_len", "Length")
+--
 proto.fields.data = ProtoField.bytes("ebm.data", "Data")
-proto.fields.padding = ProtoField.bytes("ebm.padding", "Padding")
 
 proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
 
@@ -77,8 +83,6 @@ local requests = {}
 
 function proto.dissector (tvb, pinfo, tree)
 	local len = tvb:len()
-	-- 50: request, 46: code
-	if not (len == 50 or len == 46) then return end
 
 	pinfo.cols.info = proto.description
 	pinfo.cols.protocol = proto.name
@@ -90,16 +94,29 @@ function proto.dissector (tvb, pinfo, tree)
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	-- |                     Flags                     |    Sequence   :
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	-- :                           Sequence                            |
+	-- :                   Sequence                    |     Status    |
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	-- |     Status    |            Payload
-	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	-- |            Payload
+	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	--
-	-- Code (C) field
+	-- Flags
+	--        0                   1                   2
+	--        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+	--       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	--       |0 0 0 0 0 0 0 0 0 0 0 0 B A A B B 0 0 0 0 0 0 1|
+	--       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	--
-	--    0 - Request
+	--    A
 	--
-	--    1 - Response
+	--        0 - Response
+	--
+	--        1 - Request
+	--
+	--    B
+	--
+	--        0 - Request
+	--
+	--        1 - Response
 	--
 	-- Status
 	--
@@ -112,18 +129,30 @@ function proto.dissector (tvb, pinfo, tree)
 
 	local hdr_flags_tvb = hdr_tvb(0, 3)
 	local hdr_flags = hdr_tree:add(proto, hdr_flags_tvb(), "Flags")
-	hdr_flags:add(proto.fields.code, hdr_flags_tvb(2, 1))
-
-	if bit.band(hdr_flags_tvb:uint(2, 1), 0xff - 0x80 - 0x01) ~= 0 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 1-6 not all unset")
-	end
-	if bit.band(hdr_flags_tvb:uint(2, 1), 0x01) ~= 1 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bit 7 not set")
-	end
+	hdr_flags:add(proto.fields.code, hdr_flags_tvb(2, 1))	-- bit 16
 
 	local response = f_code()()
 
 	pinfo.cols.info:append(response and ": Response" or ": Query")
+	-- FIXME fold this into a single bit.band/uint
+	if hdr_flags_tvb(0,1):uint() ~= 0 and bit.band(hdr_flags_tvb(1, 1):uint(), 0xf0) ~= 0 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 1-11 not all unset")
+	end
+	if response then
+		if bit.band(hdr_flags_tvb(1, 1):uint(), 0x0f) ~= 9 then
+			hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 12-15 not 0b1001")
+		end
+	else
+		if bit.band(hdr_flags_tvb(1, 1):uint(), 0x0f) ~= 6 then
+			hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 12-15 not 0b0110")
+		end
+	end
+	if bit.band(hdr_flags_tvb(2, 1):uint(), 0x7e) ~= 0 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 17-22 not all unset")
+	end
+	if bit.band(hdr_flags_tvb(2, 1):uint(), 0x01) ~= 1 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 23 not set")
+	end
 
 	hdr_tree:add(proto.fields.seq, hdr_tvb(3, 4))
 	local seq = f_seq()()
@@ -143,95 +172,65 @@ function proto.dissector (tvb, pinfo, tree)
 	local payload_tvb = tvb(8)
 	local payload_tree = ebm_tree:add(proto, payload_tvb(), "Payload")
 
-	local padding_tvb
-	if response then
-		-- Response (C = 1)
-		--
-		--  0                   1                   2                   3
-		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		-- |                    Data                       |    Padding    :
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		-- :            Padding
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		--
-		-- Data
-		--
-		--    Three (3) octets of data
-		--
-		-- Padding
-		--
-		--    35 octets zeroed out
+	local pi
+	local pi_tvb
+	local offset = 0
+	while payload_tvb:len() > offset do
+		if response then
+--			if type == 0 then	-- Data (Type = 0)
+			if payload_tvb:len() >= offset + 3 then
+				--  0                   1                   2
+				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+				-- |                     Data                      |
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-		payload_tree:add(proto.fields.data, payload_tvb(0, 3))
-		padding_tvb  = payload_tvb(3)
-		if padding_tvb:len() ~= 35 then
-			payload_tree:add_proto_expert_info(proto.experts.assert, "Padding expected to be 35 octets")
-		end
-	else
-		-- Request (C = 0)
-		--
-		--  0                   1                   2                   3
-		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		-- |     Flags     |     Type      |             Address           |
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		-- |        Address Width          |             Padding           :
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		-- :            Padding
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		--
-		-- Flags
-		--
-		--        0 1 2 3 4 5 6 7
-		--       +-+-+-+-+-+-+-+-+
-		--       |0 0 0 0 0 0 0 H|
-		--       +-+-+-+-+-+-+-+-+
-		--
-		--    H  MUST be set
-		--
-		-- Type
-		--
-		--    0 - octets
-		--
-		-- Register
-		--
-		--    Unsigned 16-bit integer providing the register number to read
-		--
-		-- Register Width
-		--
-		--    Unsigned 16-bit integer providing the number of octets to return.
-		--    The value MUST be three (3).
-		--
-		-- Padding
-		--
-		--    36 octets zeroed out
+				pi_tvb = payload_tvb(offset, 3)
+				pi = payload_tree:add(proto, pi_tvb(), "Data")
+				offset = offset + 3
+			else
+				pi = payload_tree:add(proto, payload_tvb(offset), "Unknown")
+				offset = payload_tvb:len()
 
-		if bit.band(payload_tvb(0, 1):uint(), 0x01) ~= 1 then
-			payload_tree:add_proto_expert_info(proto.experts.assert, "Request Flags bit 7 not set")
-		end
+				pi:add_proto_expert_info(proto.experts.assert, "Unknown Response")
+			end
+		else
+			local type = payload_tvb(offset, 1):uint()
 
-		payload_tree:add(proto.fields.type, payload_tvb(1, 1))
-		payload_tree:add(proto.fields.reg, payload_tvb(2, 2))
-		payload_tree:add(proto.fields.regsize, payload_tvb(4, 2))
-		if payload_tvb(4, 2):uint() ~= 3 then
-			payload_tree:add_proto_expert_info(proto.experts.assert, "Register Size expected to be 3")
-		end
-		padding_tvb  = payload_tvb(6)
-		if padding_tvb:len() ~= 36 then
-			payload_tree:add_proto_expert_info(proto.experts.assert, "Padding expected to be 36 octets")
+			if type == 0 then
+				break
+			elseif type == 1 then	-- Read Register (Type = 1)
+				--  0                   1                   2                   3
+				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+				-- |     Type      |0 0 0 0 0 0 0 0|            Register           :
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+				-- |        Register Length        |
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+				pi_tvb = payload_tvb(offset, 6)
+				pi = payload_tree:add(proto, pi_tvb(), "Read Register")
+				offset = offset + 6
+
+				pi:add(proto.fields.cmd, pi_tvb(0, 1))
+				if pi_tvb(1, 1):uint() ~= 0 then
+					pi:add_proto_expert_info(proto.experts.assert, "Flags not all unset")
+				end
+				pi:add(proto.fields.cmd_read_reg, pi_tvb(2, 2))
+				pi:add(proto.fields.cmd_read_len, pi_tvb(4, 2))
+				if pi_tvb(4, 2):uint() ~= 3 then
+					pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
+				end
+			else
+				pi = payload_tree:add(proto, payload_tvb(offset), "Unknown")
+				offset = payload_tvb:len()
+
+				pi:add_proto_expert_info(proto.experts.assert, "Unknown Command")
+			end
 		end
 	end
 
-	payload_tree:add(proto.fields.padding, padding_tvb())
-	for i=0,padding_tvb:len() - 1 do
-		if padding_tvb(i, 1):uint() ~= 0x00 then
-			payload_tree:add_proto_expert_info(proto.experts.assert, "Padding has non-zero bytes")
-			break
-		end
-	end
-
-	return len
+	return len - (payload_tvb:len() - offset)
 end
 
 local dissector = DissectorTable.get("ethertype")
