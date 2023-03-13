@@ -4,10 +4,6 @@
 --
 -- Everything is guess work, so errors are guarenteed!
 
--- conversation tracking state used for populating frametype.{REQUEST,RESPONSE}
--- ...not sure this is safe over multiple sessions
-local requests = {}
-
 local vs_register = {
 --	[0x001e] = "",						-- "\x40\x00\x02"
 
@@ -74,6 +70,10 @@ proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.AS
 
 local f_code = Field.new("ebm.code")
 local f_seq = Field.new("ebm.seq")
+
+-- conversation tracking state used for populating frametype.{REQUEST,RESPONSE}
+-- FIXME: not sure this is safe over multiple sessions
+local requests = {}
 
 function proto.dissector (tvb, pinfo, tree)
 	local len = tvb:len()
