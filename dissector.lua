@@ -4,6 +4,10 @@
 --
 -- Everything is guess work, so errors are guarenteed!
 
+-- conversation tracking state used for populating frametype.{REQUEST,RESPONSE}
+-- ...not sure this is safe over multiple sessions
+local requests = {}
+
 local vs_register = {
 --	[0x001e] = "",						-- "\x40\x00\x02"
 
@@ -54,36 +58,22 @@ local vs_request_payload_type = {
 
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
-local pf_hdr = ProtoField.bytes("ebm.flags")
-table.insert(proto.fields, pf_hdr)
+proto.fields.hdr = ProtoField.bytes("ebm.flags")
+proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
+proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
+proto.fields.code = ProtoField.bool("ebm.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
+proto.fields.seq = ProtoField.uint32("ebm.seq", "Sequence Number")
+proto.fields.status = ProtoField.uint8("ebm.status", "Status", nil, vs_status)
+proto.fields.type = ProtoField.uint8("ebm.type", "Type", nil, vs_request_payload_type)
+proto.fields.reg = ProtoField.uint16("ebm.reg", "Register", base.HEX, vs_register)
+proto.fields.regsize = ProtoField.uint16("ebm.regsize", "Register Size")
+proto.fields.data = ProtoField.bytes("ebm.data", "Data")
+proto.fields.padding = ProtoField.bytes("ebm.padding", "Padding")
 
-local pf_code = ProtoField.bool("ebm.flags.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
-table.insert(proto.fields, pf_code)
-local f_code = Field.new("ebm.flags.code")
+proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
 
-local pf_seq = ProtoField.uint32("ebm.seq", "Sequence Number")
-table.insert(proto.fields, pf_seq)
-
-local pf_status = ProtoField.uint8("ebm.status", "Status", nil, vs_status)
-table.insert(proto.fields, pf_status)
-
-local pf_type = ProtoField.uint8("ebm.type", "Type", nil, vs_request_payload_type)
-table.insert(proto.fields, pf_type)
-
-local pf_reg = ProtoField.uint16("ebm.reg", "Register", base.HEX, vs_register)
-table.insert(proto.fields, pf_reg)
-
-local pf_regsize = ProtoField.uint16("ebm.regsize", "Register Size")
-table.insert(proto.fields, pf_regsize)
-
-local pf_data = ProtoField.bytes("ebm.data", "Data")
-table.insert(proto.fields, pf_data)
-
-local pf_padding = ProtoField.bytes("ebm.padding", "Padding")
-table.insert(proto.fields, pf_padding)
-
-local ef_assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
-table.insert(proto.experts, ef_assert)
+local f_code = Field.new("ebm.code")
+local f_seq = Field.new("ebm.seq")
 
 function proto.dissector (tvb, pinfo, tree)
 	local len = tvb:len()
@@ -93,7 +83,7 @@ function proto.dissector (tvb, pinfo, tree)
 	pinfo.cols.info = proto.description
 	pinfo.cols.protocol = proto.name
 
-	local subtree = tree:add(proto, tvb(), "EBM Protocol")
+	local ebm_tree = tree:add(proto, tvb(), "EBM Protocol")
 
 	--  0                   1                   2                   3
 	--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -118,32 +108,40 @@ function proto.dissector (tvb, pinfo, tree)
 	--  255 - Not applicable
 
 	local hdr_tvb = tvb(0, 8)
-	local hdr = subtree:add(proto, hdr_tvb(), "Header")
+	local hdr_tree = ebm_tree:add(proto, hdr_tvb(), "Header")
 
 	local hdr_flags_tvb = hdr_tvb(0, 3)
-	local hdr_flags = hdr:add(proto, hdr_flags_tvb(), "Flags")
-	hdr_flags:add(pf_code, hdr_flags_tvb(2, 1))
+	local hdr_flags = hdr_tree:add(proto, hdr_flags_tvb(), "Flags")
+	hdr_flags:add(proto.fields.code, hdr_flags_tvb(2, 1))
+
+	if bit.band(hdr_flags_tvb:uint(2, 1), 0xff - 0x80 - 0x01) ~= 0 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 1-6 not all unset")
+	end
+	if bit.band(hdr_flags_tvb:uint(2, 1), 0x01) ~= 1 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bit 7 not set")
+	end
 
 	local response = f_code()()
 
 	pinfo.cols.info:append(response and ": Response" or ": Query")
 
-	if bit.band(hdr_flags_tvb:uint(2, 1), 0xff - 0x80 - 0x01) ~= 0 then
-		hdr_flags:add_proto_expert_info(ef_assert, "Flags bits 1-6 not all unset")
-	end
-	if bit.band(hdr_flags_tvb:uint(2, 1), 0x01) ~= 1 then
-		hdr_flags:add_proto_expert_info(ef_assert, "Flags bit 7 not set")
+	hdr_tree:add(proto.fields.seq, hdr_tvb(3, 4))
+	local seq = f_seq()()
+	if pinfo.visited then
+		hdr_tree:add(proto.fields[response and "frame_request" or "frame_response"], requests[seq][not response]):set_generated()
+	else
+		if not requests[seq] then requests[seq] = {} end
+		requests[seq][response] = pinfo.number
 	end
 
-	hdr:add(pf_seq, hdr_tvb(3, 4))
-	hdr:add(pf_status, hdr_tvb(7, 1))
+	hdr_tree:add(proto.fields.status, hdr_tvb(7, 1))
 	local hdr_status_tvb = hdr_tvb(7, 1)
 	if not ((response and hdr_status_tvb:uint() == 0x00) or (not response and hdr_status_tvb:uint() == 0xff)) then
-		hdr:add_proto_expert_info(ef_assert, "Status has unexpected value")
+		hdr_tree:add_proto_expert_info(proto.experts.assert, "Status has unexpected value")
 	end
 
 	local payload_tvb = tvb(8)
-	local payload = subtree:add(proto, payload_tvb(), "Payload")
+	local payload_tree = ebm_tree:add(proto, payload_tvb(), "Payload")
 
 	local padding_tvb
 	if response then
@@ -165,10 +163,10 @@ function proto.dissector (tvb, pinfo, tree)
 		--
 		--    35 octets zeroed out
 
-		payload:add(pf_data, payload_tvb(0, 3))
+		payload_tree:add(proto.fields.data, payload_tvb(0, 3))
 		padding_tvb  = payload_tvb(3)
 		if padding_tvb:len() ~= 35 then
-			payload:add_proto_expert_info(ef_assert, "Padding expected to be 35 octets")
+			payload_tree:add_proto_expert_info(proto.experts.assert, "Padding expected to be 35 octets")
 		end
 	else
 		-- Request (C = 0)
@@ -210,25 +208,25 @@ function proto.dissector (tvb, pinfo, tree)
 		--    36 octets zeroed out
 
 		if bit.band(payload_tvb(0, 1):uint(), 0x01) ~= 1 then
-			payload:add_proto_expert_info(ef_assert, "Request Flags bit 7 not set")
+			payload_tree:add_proto_expert_info(proto.experts.assert, "Request Flags bit 7 not set")
 		end
 
-		payload:add(pf_type, payload_tvb(1, 1))
-		payload:add(pf_reg, payload_tvb(2, 2))
-		payload:add(pf_regsize, payload_tvb(4, 2))
+		payload_tree:add(proto.fields.type, payload_tvb(1, 1))
+		payload_tree:add(proto.fields.reg, payload_tvb(2, 2))
+		payload_tree:add(proto.fields.regsize, payload_tvb(4, 2))
 		if payload_tvb(4, 2):uint() ~= 3 then
-			payload:add_proto_expert_info(ef_assert, "Register Size expected to be 3")
+			payload_tree:add_proto_expert_info(proto.experts.assert, "Register Size expected to be 3")
 		end
 		padding_tvb  = payload_tvb(6)
 		if padding_tvb:len() ~= 36 then
-			payload:add_proto_expert_info(ef_assert, "Padding expected to be 36 octets")
+			payload_tree:add_proto_expert_info(proto.experts.assert, "Padding expected to be 36 octets")
 		end
 	end
 
-	payload:add(pf_padding, padding_tvb())
+	payload_tree:add(proto.fields.padding, padding_tvb())
 	for i=0,padding_tvb:len() - 1 do
 		if padding_tvb(i, 1):uint() ~= 0x00 then
-			payload:add_proto_expert_info(ef_assert, "Padding has non-zero bytes")
+			payload_tree:add_proto_expert_info(proto.experts.assert, "Padding has non-zero bytes")
 			break
 		end
 	end
