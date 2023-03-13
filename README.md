@@ -6,7 +6,7 @@ Utilities used to work with the Metanoia/Proscend VDSL2 SFP Modem.
     * [Metanoia MT-V5311](https://metanoia-comm.com/products/xdsl/vdsl2-sfp/) - seems to be the OEM
     * [Proscend 180-T](https://www.proscend.com/en/product/VDSL2-SFP-Modem-Telco/180-T.html)
     * [ALLNET ALL4781-VDSL2-SFP](https://www.allnet.de/en/allnet-brand/produkte/modems-router/sfp-vdsl2-bridge-modem)
- * Non-official public materials regarding the module
+ * Useful non-official public materials regarding the modem:
     * [Proscend SOS/ROC Firmware Update](https://youtu.be/fdCl3nxgEyA)
     * Duxtel:
        * [PS180-T - recommended applications and limitations](https://shop.duxtel.com.au/help/en-gb/11-product-advisory/38-ps180-t-recommended-applications-and-limitations)
@@ -28,7 +28,7 @@ To use a basic Ethernet Boot & Management (EBM) protocol dissector:
 
 ## SNMP AgentX
 
-An [SNMP AgentX](http://www.net-snmp.org/docs/README.agentx.html) is being built...
+An [SNMP AgentX](http://www.net-snmp.org/docs/README.agentx.html) is planned...
 
 ## Official
 
