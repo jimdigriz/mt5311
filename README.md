@@ -26,6 +26,14 @@ To use a basic Ethernet Boot & Management (EBM) protocol dissector:
 
 **N.B.** [`dissector.lua`](./dissector.lua) contains my notes on the protocol
 
+### Sample Data
+
+[`dump-soc.txt.gz`](./dump-soc.txt.gz) is the output of the "Dump SOC" button whilst [`dump-soc.pcap.gz`](./dump-soc.pcap.gz) is a packet capture during running it.
+
+**N.B** packet capture includes connecting to the SFP and having 'Port Status' section open and running for a while
+
+It looks like the "Dump SOC" starts at (roughly) frame number 409 with the value of `xdslTwConfig` being in frame 426.
+
 ## SNMP AgentX
 
 An [SNMP AgentX](http://www.net-snmp.org/docs/README.agentx.html) is planned...
