@@ -1,8 +1,8 @@
 ### Format is TAB (\t, 0x09) separated columns:
 ###  * register (dec or hex)
 ###     * for example '123' (dec) or '0x123' (hex)
+###     * if only register defined line will be ignored so Wireshark shows 'Unknown'
 ###  * name
-###     * if blank the line will be ignore so Wireshark shows 'Unknown'
 ###
 ### Comments ('#') are stripped out
 ### Leading and trailing whitespace is stripped out

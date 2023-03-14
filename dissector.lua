@@ -30,7 +30,7 @@ function read_register_map ()
 		if #r == 1 or #r == 2 then
 			status, r[1] = pcall(function () return tonumber(r[1]) end)
 			if status then
-				if r[2] then
+				if #r == 2 then
 					vs_register[r[1]] = r[2]
 				end
 			else
