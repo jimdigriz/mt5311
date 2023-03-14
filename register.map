@@ -6,6 +6,8 @@
 ###
 ### Comments ('#') are stripped out
 ### Leading and trailing whitespace is stripped out
+###
+### Sample values are included as a comment at the end of each line
 
 0x001e							# "\x40\x00\x02"
 
