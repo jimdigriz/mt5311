@@ -1,51 +1,13 @@
 -- The Ethernet Boot & Management (EBM) protocol smells like an
--- RPC for HDLC/I2C or something. So you ask for a register and
--- it returns its value as 3 octets.
+-- RPC for I2C wrapped in HDLC or something. So you ask for a
+-- register and it returns its value as 3 octets.
 --
 -- Everything is guess work, so errors are guarenteed!
+--
+-- Assumptions are codified with expert.group.ASSUMPTION
 
-local vs_register = {
-	-- System Table
-
-
---	[0x001e] = "",						-- "\x40\x00\x02"
-
-	[0x6c31] = "Firmware Version",				-- "\x75\x02\x02" = 750202
-	[0x6c32] = "Firmware Date (DDMMYY)",			-- "\x09\x07\x18" = 090718 (might be US format!)
-	[0x6c33] = "Firmware Time (HHMMSS)",			-- "\x17\x30\x44" = 173044
---	[0x6c34] = "",						-- "\x80\x15\x68"
---	[0x6c35] = "",						-- "\x00\x03\x29"
---	[0x6c36] = "",						-- "\x47\x41\x54"
-	[0x6f00] = "Bootcode Version",				-- "\xff\x00\x03" = ff0003
-	[0x6f2f] = "Electrical Length",				-- "\x00\x00\xb9" = 185m
-	[0x7d90] = "Carrier Set",				-- "\x00\x00\x03" = 3
-
-	-- Far End
-	[0x79ce] = "Inventory Version [0:2]",			-- "v12"
-	[0x79cf] = "Inventory Version [3:5]",			-- ".00"
-	[0x79d0] = "Inventory Version [6:8]",			-- ".28"
-	[0x79d1] = "Inventory Version [9:11]",			-- "   "
-	[0x79d2] = "Inventory Version [12:14]",			-- "   "
-	[0x79d3] = "Inventory Version [15:17]",			-- "\0\0\0"
-	[0x7d98] = "Peer Vendor ID [2,0,1]",			-- "CBD"
-	[0x7d99] = "Peer Vendor ID (and SpecInfo) [SI1,SI0,3]",	-- "\xC1\xC0" .. "M"
---	[0x7d99] = "Peer Vendor Specific Information [1,0,_]",	-- "\xC1\xC0" .. "M"
-	[0x7ea4] = "MAC Address [0:2]",				-- "\0\0\0"
-	[0x7ea5] = "MAC Address [3:5]",				-- "\0\0\0"
-	[0x7ea6] = "MAC Address [6:8]",				-- "\0\0\0"
-	[0x7ea7] = "MAC Address [9:11]",			-- "\0\0\0"
-
-	-- Near End
-	[0x79e4] = "Peer Vendor ID [_,_,0]",			-- "\0\0M",
-	[0x79e5] = "Peer Vendor ID [1:3]",			-- "ETA",
-	[0x79ea] = "Inventory Version [0:2]",			-- "1_6"
-	[0x79eb] = "Inventory Version [3:5]",			-- "0_8"
-	[0x79ec] = "Inventory Version [6:8]",			-- "255"
-	[0x79ed] = "Inventory Version [9:11]",			-- " MT"
-	[0x79ee] = "Inventory Version [12:14]",			-- "531"
-	[0x79ef] = "Inventory Version [15:17]",			-- "1\0\0"
-	[0x7eac] = "VCXO (Voltage Controlled Crystal Oscillator?)",	-- "\x4c\xa0\0" = 0x4ca000
-}
+-- populated in init so no need to restart to catch updates to register.map
+local vs_register
 
 local vs_status = {
 	[0] = "Success",
@@ -81,8 +43,40 @@ local f_seq = Field.new("ebm.seq")
 -- frametype and reconciling reads with data
 local requests
 
--- FIXME: not sure this is safe over multiple sessions
 function proto.init ()
+	local line_count = 0
+	local warn = function (msg)
+		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg)
+	end
+	vs_register = {}
+	for line in io.lines("register.map") do
+		line_count = line_count + 1
+
+		line = line:gsub("#.*$", "")
+		line = line:gsub("^%s+", ""):gsub("%s+$", "")
+
+                local r = {}
+		if #line > 0 then
+			for v in (line .. "\t"):gmatch("[^\t]*\t") do
+				r[#r + 1] = v:sub(1, -2)
+			end
+		end
+
+		if #r == 1 or #r == 2 then
+			r[1] = pcall(function () tonumber(#r[1]) end)
+			if r[1] then
+				if r[2] then
+					vs_register[r[1]] = r[2]
+				end
+			else
+				warn("unparsable register value in register.map, ignoring")
+			end
+		elseif #r ~= 0 then
+				warn("unparsable in register.map, ignoring")
+		end
+	end
+
+	-- FIXME: not sure this is safe over multiple sessions
 	requests = {}
 end
 
@@ -237,5 +231,4 @@ function proto.dissector (tvb, pinfo, tree)
 	return len - (payload_tvb:len() - offset)
 end
 
-local dissector = DissectorTable.get("ethertype")
-dissector:add(0x6120, proto)
+DissectorTable.get("ethertype"):add(0x6120, proto)
