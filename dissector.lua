@@ -77,9 +77,14 @@ proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.AS
 local f_code = Field.new("ebm.code")
 local f_seq = Field.new("ebm.seq")
 
--- conversation tracking state used for populating frametype.{REQUEST,RESPONSE}
+-- conversation tracking for populating
+-- frametype and reconciling reads with data
+local requests
+
 -- FIXME: not sure this is safe over multiple sessions
-local requests = {}
+function proto.init ()
+	requests = {}
+end
 
 function proto.dissector (tvb, pinfo, tree)
 	local len = tvb:len()
@@ -134,8 +139,7 @@ function proto.dissector (tvb, pinfo, tree)
 	local response = f_code()()
 
 	pinfo.cols.info:append(response and ": Response" or ": Query")
-	-- FIXME fold this into a single bit.band/uint
-	if hdr_flags_tvb(0,1):uint() ~= 0 and bit.band(hdr_flags_tvb(1, 1):uint(), 0xf0) ~= 0 then
+	if bit.band(hdr_flags_tvb(0, 2):uint(), 0xfff0) ~= 0 then
 		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 1-11 not all unset")
 	end
 	if response then
