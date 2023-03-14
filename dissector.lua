@@ -6,8 +6,42 @@
 --
 -- Assumptions are codified with expert.group.ASSUMPTION
 
--- populated in init so no need to restart to catch updates to register.map
-local vs_register
+local vs_register = {}
+function read_register_map ()
+	local status
+
+	local line_count = 0
+	local warn = function (msg)
+		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg)
+	end
+	for line in io.lines("register.map") do
+		line_count = line_count + 1
+
+		line = line:gsub("#.*$", "")
+		line = line:gsub("^%s+", ""):gsub("%s+$", "")
+
+                local r = {}
+		if #line > 0 then
+			for v in (line .. "\t"):gmatch("[^\t]*\t") do
+				r[#r + 1] = v:sub(1, -2)
+			end
+		end
+
+		if #r == 1 or #r == 2 then
+			status, r[1] = pcall(function () return tonumber(r[1]) end)
+			if status then
+				if r[2] then
+					vs_register[r[1]] = r[2]
+				end
+			else
+				warn("unparsable register value in register.map, ignoring")
+			end
+		elseif #r ~= 0 then
+				warn("unparsable in register.map, ignoring")
+		end
+	end
+end
+read_register_map()
 
 local vs_status = {
 	[0] = "Success",
@@ -44,38 +78,6 @@ local f_seq = Field.new("ebm.seq")
 local requests
 
 function proto.init ()
-	local line_count = 0
-	local warn = function (msg)
-		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg)
-	end
-	vs_register = {}
-	for line in io.lines("register.map") do
-		line_count = line_count + 1
-
-		line = line:gsub("#.*$", "")
-		line = line:gsub("^%s+", ""):gsub("%s+$", "")
-
-                local r = {}
-		if #line > 0 then
-			for v in (line .. "\t"):gmatch("[^\t]*\t") do
-				r[#r + 1] = v:sub(1, -2)
-			end
-		end
-
-		if #r == 1 or #r == 2 then
-			r[1] = pcall(function () tonumber(#r[1]) end)
-			if r[1] then
-				if r[2] then
-					vs_register[r[1]] = r[2]
-				end
-			else
-				warn("unparsable register value in register.map, ignoring")
-			end
-		elseif #r ~= 0 then
-				warn("unparsable in register.map, ignoring")
-		end
-	end
-
 	-- FIXME: not sure this is safe over multiple sessions
 	requests = {}
 end
