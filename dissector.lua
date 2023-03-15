@@ -20,7 +20,7 @@ function read_register_map ()
 		line = line:gsub("#.*$", "")
 		line = line:gsub("^%s+", ""):gsub("%s+$", "")
 
-                local r = {}
+		local r = {}
 		if #line > 0 then
 			for v in (line .. "\t"):gmatch("[^\t]*\t") do
 				r[#r + 1] = v:sub(1, -2)
@@ -48,13 +48,17 @@ local vs_status = {
 	[255] = "No error"
 }
 
+local CMD = {
+	["read_reg"]	= 1
+}
 local vs_cmd = {
-	[1] = "Read Register"
+	[1]		= "Read Register"
 }
 
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
-proto.fields.hdr = ProtoField.bytes("ebm.flags")
+proto.fields.hdr = ProtoField.bytes("ebm.hdr", "Header")
+proto.fields.flags = ProtoField.bytes("ebm.flags", "Flags")
 proto.fields.code = ProtoField.bool("ebm.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
 proto.fields.seq = ProtoField.uint32("ebm.seq", "Sequence Number")
 proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
@@ -67,11 +71,13 @@ proto.fields.cmd_read_reg = ProtoField.uint16("ebm.cmd.read_reg", "Address", bas
 proto.fields.cmd_read_len = ProtoField.uint16("ebm.cmd.read_len", "Length")
 --
 proto.fields.data = ProtoField.bytes("ebm.data", "Data")
+proto.fields.padding = ProtoField.bytes("ebm.padding", "Padding")
 
 proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
 
 local f_code = Field.new("ebm.code")
 local f_seq = Field.new("ebm.seq")
+local f_cmd_read_reg = Field.new("ebm.cmd.read_reg")
 
 -- conversation tracking for populating
 -- frametype and reconciling reads with data
@@ -88,7 +94,7 @@ function proto.dissector (tvb, pinfo, tree)
 	pinfo.cols.info = proto.description
 	pinfo.cols.protocol = proto.name
 
-	local ebm_tree = tree:add(proto, tvb(), "EBM Protocol")
+	local ebm_tree = tree:add(proto, tvb())
 
 	--  0                   1                   2                   3
 	--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -126,10 +132,10 @@ function proto.dissector (tvb, pinfo, tree)
 	--  255 - Not applicable
 
 	local hdr_tvb = tvb(0, 8)
-	local hdr_tree = ebm_tree:add(proto, hdr_tvb(), "Header")
+	local hdr_tree = ebm_tree:add(proto.fields.hdr, hdr_tvb())
 
 	local hdr_flags_tvb = hdr_tvb(0, 3)
-	local hdr_flags = hdr_tree:add(proto, hdr_flags_tvb(), "Flags")
+	local hdr_flags = hdr_tree:add(proto.fields.flags, hdr_flags_tvb())
 	hdr_flags:add(proto.fields.code, hdr_flags_tvb(2, 1))	-- bit 16
 
 	local response = f_code()()
@@ -159,7 +165,7 @@ function proto.dissector (tvb, pinfo, tree)
 	if pinfo.visited then
 		hdr_tree:add(proto.fields[response and "frame_request" or "frame_response"], requests[seq][not response]):set_generated()
 	else
-		if not requests[seq] then requests[seq] = {} end
+		if not requests[seq] then requests[seq] = { ["cmds"] = {} } end
 		requests[seq][response] = pinfo.number
 	end
 
@@ -172,29 +178,35 @@ function proto.dissector (tvb, pinfo, tree)
 	local payload_tvb = tvb(8)
 	local payload_tree = ebm_tree:add(proto, payload_tvb(), "Payload")
 
-	local pi
-	local pi_tvb
+	local pi, pi_tvb
 	local offset = 0
-	while payload_tvb:len() > offset do
-		if response then
---			if type == 0 then	-- Data (Type = 0)
-			if payload_tvb:len() >= offset + 3 then
-				--  0                   1                   2
-				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-				-- |                     Data                      |
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	if response then
+		--  0                   1                   2
+		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |                     Data                      |
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-				pi_tvb = payload_tvb(offset, 3)
-				pi = payload_tree:add(proto, pi_tvb(), "Data")
-				offset = offset + 3
-			else
-				pi = payload_tree:add(proto, payload_tvb(offset), "Unknown")
-				offset = payload_tvb:len()
+		local cmds = requests[seq]["cmds"]
+		for i, cmd in pairs(cmds) do
+			pi_tvb = payload_tvb(offset, math.min(3, payload_tvb:len() - offset))
+			pi = payload_tree:add(proto.fields.data, pi_tvb())
+			offset = offset + pi_tvb:len()
 
-				pi:add_proto_expert_info(proto.experts.assert, "Unknown Response")
+			if pi_tvb:len() < 3 then
+				payload_tvb:add_proto_expert_info(proto.experts.assert, "Truncated Response")
+				break
 			end
-		else
+
+			if pinfo.visited then
+				if cmd[1] == CMD.read_reg then
+					local regname = vs_register[cmd[2]] or "Unknown"
+					pi:append_text(" (Read Register: " .. regname .. " [0x" .. string.format("%x", cmd[2]) .. "])")
+				end
+			end
+		end
+	else
+		while payload_tvb:len() > offset do
 			local type = payload_tvb(offset, 1):uint()
 
 			if type == 0 then
@@ -210,7 +222,7 @@ function proto.dissector (tvb, pinfo, tree)
 
 				pi_tvb = payload_tvb(offset, 6)
 				pi = payload_tree:add(proto, pi_tvb(), "Read Register")
-				offset = offset + 6
+				offset = offset + pi_tvb:len()
 
 				pi:add(proto.fields.cmd, pi_tvb(0, 1))
 				if pi_tvb(1, 1):uint() ~= 0 then
@@ -221,16 +233,36 @@ function proto.dissector (tvb, pinfo, tree)
 				if pi_tvb(4, 2):uint() ~= 3 then
 					pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
 				end
+
+				local cmd_read_reg = f_cmd_read_reg()()
+				if not pinfo.visited then
+					table.insert(requests[seq]["cmds"], { CMD.read_reg, cmd_read_reg })
+				end
 			else
 				pi = payload_tree:add(proto, payload_tvb(offset), "Unknown")
 				offset = payload_tvb:len()
 
 				pi:add_proto_expert_info(proto.experts.assert, "Unknown Command")
+
+				if not pinfo.visited then
+					table.insert(requests[seq]["cmds"], { nil })
+				end
 			end
 		end
 	end
 
-	return len - (payload_tvb:len() - offset)
+	if payload_tvb:len() > offset then
+		local padding_tvb = payload_tvb(offset)
+		local padding_tree = payload_tree:add(proto.fields.padding, padding_tvb())
+		for i=1, padding_tvb:len() - 1 do
+			if padding_tvb(i, 1):uint() ~= 0 then
+				padding_tree:add_proto_expert_info(proto.experts.assert, "Padding has non-zero bytes")
+				break
+			end
+		end
+	end
+
+	return len
 end
 
 DissectorTable.get("ethertype"):add(0x6120, proto)
