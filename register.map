@@ -9,6 +9,82 @@
 ###
 ### Sample values are included as a comment at the end of each line
 
+# System table of line 1
+0x006c39	xdslTwConfig					# "\xe4\x79\x9e"
+0x006d36	xdslTwConfig2					# "\x86\x20\xee"
+0x006e6f	xdslTwConfig3					# "\x1c\x62\xc0"
+0x006ecc	xdslTwConfig4					# "\x39\x89\x05"
+0x006d2b	xdslMetanoiaUs0PsdLimit				# "\xff\xfe\x20"
+0x007cf6	xdslGhsConfOtCarrierSet				# "\x00\x00\x01"
+0x007cf7	xdslGhsConfRtCarrierSet				# "\x00\x00\x00"
+0x006d73	ModemErrOvrflow					# "\x00\x00\x00"
+
+# Interface table of line 1
+0x006c4e	CfgM2MiiCtlReg					# "\x2f\x73\x18"
+0x006c50	CfgM2UtpCfgReg					# "\x04\x00\x80"
+0x006e37	CfgM2QosfrVd					# "\x00\x0c\x02"
+0x006d80	CfgPll1Ctl					# "\x01\x50\x22"
+0x006c3c	xdslCfgHwConfig					# "\x00\x00\x02"
+
+# Band profile table of line 1
+0x007b0a	xdsl2LConfProfXdslMode				# "\x00\x00\x3a"
+0x007b60	xdsl2LConfProfPsdMaskSelectUs			# "\x00\x00\x01"
+0x007abe	xdsl2LConfProfProfiles				# "\x00\x00\x80"
+0x007b0d	xdsl2LConfProfMaxNomAtpDs			# "\x00\x00\x91"
+0x007b0e	xdsl2LConfProfMaxNomAtpUs			# "\x00\x00\x91"
+0x007a11	xdsl2LConfProfVdsl2CarMask			# "\x00\x00\x00"
+0x007b38	xdsl2LConfProfPsdMaskUs				# "\x00\x00\x00"
+0x007b0c	xdsl2LConfProfMaxNomPsdUs			# "\xFF\xFE\xA7"
+0x007b10	xdsl2LConfProfPsdMaskDs				# "\x00\x00\x00"
+0x007b0b	xdsl2LConfProfMaxNomPsdDs			# "\xFF\xFE\x93"
+0x007b61	xdsl2LConfProfClassMask				# "\x00\x00\x01"
+0x007b6b	xdsl2LConfProfLimitMaskDs			# "\xC3\x00\x00"
+0x007b93	xdsl2LConfProfLimitMaskUs			# "\xC3\x00\x00"
+0x007af4	xdsl2LConfProfBandDs				# "\x00\x00\x21"
+0x007afe	xdsl2LConfProfBandUs				# "\x00\x00\x07"
+0x006d2c	xdslVdsl2ProfilesLimit8a			# "\x4B\x57\xB3"
+0x006d2d	xdslVdsl2ProfilesLimit8b			# "\x4B\x57\xB3"
+0x006d2e	xdslVdsl2ProfilesLimit8c			# "\x4B\x57\xB3"
+0x006d2f	xdslVdsl2ProfilesLimit8d			# "\x4B\x57\xB3"
+0x006d30	xdslVdsl2ProfilesLimit12a			# "\xAD\xE7\xB3"
+0x006d31	xdslVdsl2ProfilesLimit12b			# "\xAD\xE7\xB3"
+0x006d32	xdslVdsl2ProfilesLimit17a			# "\xAD\xEF\xF0"
+0x006d33	xdslVdsl2ProfilesLimit30a			# "\xD9\x6A\x6A"
+
+# Channel profile table of line 1
+0x007bdd	xdsl2ChConfProfMinProtection8Us0		# "\x00\x00\x03"
+0x007bdc	xdsl2ChConfProfMinProtection8Ds0		# "\x00\x00\x03"
+0x007bdb	xdsl2ChConfProfMinProtectionUs0			# "\x00\x00\x04"
+0x007bda	xdsl2ChConfProfMinProtectionDs0			# "\x00\x00\x04"
+0x007bd9	xdsl2ChConfProfMaxDelayUs0			# "\x00\x00\x40"
+0x007bd8	xdsl2ChConfProfMaxDelayDs0			# "\x00\x00\x40"
+0x007bd5	xdsl2ChConfProfMaxDataRateUs0			# "\x04\x93\xE0"
+0x007bd4	xdsl2ChConfProfMaxDataRateDs0			# "\x04\x93\xE0"
+0x007bd1	xdsl2ChConfProfMinDataRateUs0			# "\x00\x00\x20"
+0x007bd0	xdsl2ChConfProfMinDataRateDs0			# "\x00\x00\x20"
+0x007a7b	xdsl2LConfProfTargetSnrmDs			# "\x00\x00\x1E"
+0x007a7c	xdsl2LConfProfTargetSnrmUs			# "\x00\x00\x3C"
+0x007a7d	xdsl2LConfProfMaxSnrmDs				# "\x00\x01\x36"
+0x007a7e	xdsl2LConfProfMaxSnrmUs				# "\x00\x01\x36"
+0x007a7f	xdsl2LConfProfMinSnrmDs				# "\x00\x00\x00"
+0x007a80	xdsl2LConfProfMinSnrmUs				# "\x00\x00\x1E"
+0x007a81	xdsl2LConfProfMsgMinUs				# "\x00\x00\x10"
+0x007a82	xdsl2LConfProfMsgMinDs				# "\x00\x00\x10"
+
+# UPBO table of line 1
+0x007ae6	xdsl2LConfProfUpboKL				# "\x00\x00\x00"
+0x007ae7	xdsl2LConfProfUpboKLF				# "\x00\x01\x01"
+0x007bbc	xdsl2LConfProfUpboPsdA0				# "\x00\x0F\xA0"
+0x007bc1	xdsl2LConfProfUpboPsdA1				# "\x00\x0F\xA0"
+0x007bc6	xdsl2LConfProfUpboPsdA2				# "\x00\x0F\xA0"
+0x007bcb	xdsl2LConfProfUpboPsdA3				# "\x00\x0F\xA0"
+0x007bbd	xdsl2LConfProfUpboPsdB0				# "\x00\x00\x00"
+0x007bc2	xdsl2LConfProfUpboPsdB1				# "\x00\x00\x00"
+0x007bc7	xdsl2LConfProfUpboPsdB2				# "\x00\x00\x00"
+0x007bcc	xdsl2LConfProfUpboPsdB3				# "\x00\x00\x00"
+
+####
+
 0x00001e							# "\x40\x00\x02"
 
 0x006c31	Firmware Version				# "\x75\x02\x02" = 750202
@@ -20,15 +96,6 @@
 
 0x006c37	Port 1 Status?					# 
 0x006c38	Port 1 Status?					# 
-
-0x006c39	xdslTwConfig					# "\xe4\x79\x9e"
-0x006d36	xdslTwConfig2					# "\x86\x20\xee"
-0x006e6f	xdslTwConfig3					# "\x1c\x62\xc0"
-0x006ecc	xdslTwConfig4					# "\x39\x89\x05"
-0x006d2b	xdslMetanoiaUs0PsdLimit				# "\xff\xfe\x20"
-0x007cf6	xdslGhsConfOtCarrierSet				# "\x00\x00\x01"
-0x007cf7	xdslGhsConfRtCarrierSet				# "\x00\x00\x00"
-0x006d73	ModemErrOvrflow					# "\x00\x00\x00"
 
 0x006f00	Bootcode Version				# "\xff\x00\x03" = ff0003
 0x006f2f	Electrical Length				# "\x00\x00\xb9" = 185m
