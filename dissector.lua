@@ -185,22 +185,28 @@ function proto.dissector (tvb, pinfo, tree)
 		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		-- |                     Data                      |
 		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		--
+		-- Data
+		--
+		--    Always three (3) octets wide
+		--
+		--    Use (assumed) length from request
 
 		local cmds = requests[seq]["cmds"]
 		for i, cmd in pairs(cmds) do
-			pi_tvb = payload_tvb(offset, math.min(3, payload_tvb:len() - offset))
+			pi_tvb = payload_tvb(offset, math.min(cmd[2], payload_tvb:len() - offset))
 			pi = payload_tree:add(proto.fields.data, pi_tvb())
 			offset = offset + pi_tvb:len()
 
-			if pi_tvb:len() < 3 then
+			if pi_tvb:len() < cmd[2] then
 				payload_tvb:add_proto_expert_info(proto.experts.assert, "Truncated Response")
 				break
 			end
 
 			if pinfo.visited then
 				if cmd[1] == CMD.read_reg then
-					local regname = vs_register[cmd[2]] or "Unknown"
-					pi:append_text(" (Read Register: " .. regname .. " [0x" .. string.format("%x", cmd[2]) .. "])")
+					local regname = vs_register[cmd[3]] or "Unknown"
+					pi:append_text(" (Read Register: " .. regname .. " [0x" .. string.format("%x", cmd[3]) .. "])")
 				end
 			end
 		end
@@ -231,7 +237,7 @@ function proto.dissector (tvb, pinfo, tree)
 				end
 
 				if not pinfo.visited then
-					table.insert(requests[seq]["cmds"], { CMD.read_reg, pi_tvb(1, 3):uint() })
+					table.insert(requests[seq]["cmds"], { CMD.read_reg, pi_tvb(4, 2):uint(), pi_tvb(1, 3):uint() })
 				end
 			else
 				pi = payload_tree:add(proto, payload_tvb(offset), "Unknown")
