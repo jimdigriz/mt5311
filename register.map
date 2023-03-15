@@ -18,7 +18,9 @@
 0x006c35							# "\x00\x00\x29"
 0x006c36							# "\x47\x41\x54"
 
-0x006c38	Port 1 Status					# 
+0x006c37	Port 1 Status?					# 
+0x006c38	Port 1 Status?					# 
+
 0x006c39	xdslTwConfig					# "\xe4\x79\x9e"
 0x006d36	xdslTwConfig2					# "\x86\x20\xee"
 0x006e6f	xdslTwConfig3					# "\x1c\x62\xc0"
