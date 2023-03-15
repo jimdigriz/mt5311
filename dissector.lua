@@ -170,9 +170,27 @@ function proto.dissector (tvb, pinfo, tree)
 
 	local payload_len = f_plen()()
 	if response then payload_len = payload_len - 6 end
-	local payload_tvb = tvb(8, payload_len)
-	local payload_tree = ebm_tree:add(proto.fields.payload, payload_tvb())
-	if response then payload_len_tree:append_text(" (inc hdr ex plen [= 6 bytes]") end
+	local payload_tvb, payload_tree
+	if payload_len > 0 then
+		payload_tvb = tvb(8, payload_len)
+		payload_tree = ebm_tree:add(proto.fields.payload, payload_tvb())
+		if response then payload_len_tree:append_text(" (inc hdr ex plen [= 6 bytes]") end
+	end
+
+	if tvb:len() > 8 + payload_len then
+		local padding_tvb = tvb(8 + payload_len)
+		local padding_tree = ebm_tree:add(proto.fields.padding, padding_tvb())
+		for i=1, padding_tvb:len() - 1 do
+			if padding_tvb(i, 1):uint() ~= 0 then
+				padding_tree:add_proto_expert_info(proto.experts.assert, "Padding has non-zero bytes")
+				break
+			end
+		end
+	end
+
+	if payload_len == 0 then
+		return len
+	end
 
 	local pi, pi_tvb
 	local offset = 0
@@ -192,11 +210,13 @@ function proto.dissector (tvb, pinfo, tree)
 
 		local cmds = requests[seq]["cmds"]
 		for i, cmd in pairs(cmds) do
-			if offset >= payload_tvb:len() then
+			if offset >= payload_len then
 				payload_tree:add_proto_expert_info(proto.experts.assert, "Truncated Response")
-				offset = payload_tvb:len()
 				break
 			end
+
+			-- handle format unknown
+			if not cmd[2] then cmd[2] = payload_len - offset end
 
 			pi_tvb = payload_tvb(offset, math.min(cmd[2], payload_len - offset))
 			pi = payload_tree:add(proto.fields.data, pi_tvb())
@@ -211,16 +231,18 @@ function proto.dissector (tvb, pinfo, tree)
 				end
 			end
 
-			if pi_tvb:len() < cmd[2] then
+			if not cmd[2] then
+				pi:add_proto_expert_info(proto.experts.assert, "Format Unknown")
+				break
+			elseif pi_tvb:len() < cmd[2] then
 				pi:add_proto_expert_info(proto.experts.assert, "Truncated Data")
 				break
 			end
 		end
 	else
 		while offset < payload_len do
-			if offset >= payload_tvb:len() then
+			if offset >= payload_len then
 				payload_tree:add_proto_expert_info(proto.experts.assert, "Truncated Request")
-				offset = payload_tvb:len()
 				break
 			end
 
@@ -267,25 +289,17 @@ function proto.dissector (tvb, pinfo, tree)
 					table.insert(requests[seq]["cmds"], { type, pi_tvb(4, 2):uint(), pi_tvb(1, 3):uint() })
 				end
 			else
-				pi = payload_tree:add(proto.fields.cmd, payload_tvb(offset))
-				offset = payload_tvb:len()
+				pi_tvb = payload_tvb(offset)
+				pi = payload_tree:add(proto.fields.cmd, pi_tvb)
+				offset = offset + pi_tvb:len()
+
+				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
 
 				pi:add_proto_expert_info(proto.experts.assert, "Unknown Command")
 
 				if not pinfo.visited then
 					table.insert(requests[seq]["cmds"], { type })
 				end
-			end
-		end
-	end
-
-	if tvb:len() > 8 + payload_len then
-		local padding_tvb = tvb(8 + payload_len)
-		local padding_tree = ebm_tree:add(proto.fields.padding, padding_tvb())
-		for i=1, padding_tvb:len() - 1 do
-			if padding_tvb(i, 1):uint() ~= 0 then
-				padding_tree:add_proto_expert_info(proto.experts.assert, "Padding has non-zero bytes")
-				break
 			end
 		end
 	end
