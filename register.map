@@ -9,42 +9,51 @@
 ###
 ### Sample values are included as a comment at the end of each line
 
-0x001e							# "\x40\x00\x02"
+0x00001e							# "\x40\x00\x02"
 
-## System Table
+0x006c31	Firmware Version				# "\x75\x02\x02" = 750202
+0x006c32	Firmware Date (DDMMYY)				# "\x09\x07\x18" = 090718 (might be US format!)
+0x006c33	Firmware Time (HHMMSS)",			# "\x17\x30\x44" = 173044
+0x006c34							# "\x80\x15\x68"
+0x006c35							# "\x00\x00\x29"
+0x006c36							# "\x47\x41\x54"
 
-0x6c31	Firmware Version				# "\x75\x02\x02" = 750202
-0x6c32	Firmware Date (DDMMYY)				# "\x09\x07\x18" = 090718 (might be US format!)
-0x6c33	Firmware Time (HHMMSS)",			# "\x17\x30\x44" = 173044
-0x6c34							# "\x80\x15\x68"
-0x6c35							# "\x00\x03\x29"
-0x6c36							# "\x47\x41\x54"
-0x6f00	Bootcode Version				# "\xff\x00\x03" = ff0003
-0x6f2f	Electrical Length				# "\x00\x00\xb9" = 185m
-0x7d90	Carrier Set					# "\x00\x00\x03" = 3
-0x7eac	VCXO (Voltage Controlled Crystal Oscillator?)	# "\x4c\xa0\0" = 0x4ca000
+0x006c38	Port 1 Status					# 
+0x006c39	xdslTwConfig					# "\xe4\x79\x9e"
+0x006d36	xdslTwConfig2					# "\x86\x20\xee"
+0x006e6f	xdslTwConfig3					# "\x1c\x62\xc0"
+0x006ecc	xdslTwConfig4					# "\x39\x89\x05"
+0x006d2b	xdslMetanoiaUs0PsdLimit				# "\xff\xfe\x20"
+0x007cf6	xdslGhsConfOtCarrierSet				# "\x00\x00\x01"
+0x007cf7	xdslGhsConfRtCarrierSet				# "\x00\x00\x00"
+0x006d73	ModemErrOvrflow					# "\x00\x00\x00"
+
+0x006f00	Bootcode Version				# "\xff\x00\x03" = ff0003
+0x006f2f	Electrical Length				# "\x00\x00\xb9" = 185m
+0x007d90	Carrier Set					# "\x00\x00\x03" = 3
+0x007eac	VCXO (Voltage Controlled Crystal Oscillator?)	# "\x4c\xa0\0" = 0x4ca000
 
 ## Far End
-0x79ce	Inventory Version [0:2]				# "12"
-0x79cf	Inventory Version [3:5]				# ".00"
-0x79d0	Inventory Version [6:8]				# ".28"
-0x79d1	Inventory Version [9:11]			# "   "
-0x79d2	Inventory Version [12:14]			# "   "
-0x79d3	Inventory Version [15:17]			# "\0\0\0"
-0x7d98	Peer Vendor ID [2,0,1]				# "CBD"
-0x7d99	Peer Vendor ID (and SpecInfo) [SI1,SI0,3]	# "\xC1\xC0" .. "M"
-0x7d99	Peer Vendor Specific Information [1,0,_]	# "\xC1\xC0" .. "M"
-0x7ea4	MAC Address [0:2]				# "\0\0\0"
-0x7ea5	MAC Address [3:5]				# "\0\0\0"
-0x7ea6	MAC Address [6:8]				# "\0\0\0"
-0x7ea7	MAC Address [9:11]				# "\0\0\0"
+0x0079ce	Inventory Version [0:2]				# "12"
+0x0079cf	Inventory Version [3:5]				# ".00"
+0x0079d0	Inventory Version [6:8]				# ".28"
+0x0079d1	Inventory Version [9:11]			# "   "
+0x0079d2	Inventory Version [12:14]			# "   "
+0x0079d3	Inventory Version [15:17]			# "\0\0\0"
+0x007d98	Peer Vendor ID [2,0,1]				# "CBD"
+0x007d99	Peer Vendor ID (and SpecInfo) [SI1,SI0,3]	# "\xC1\xC0" .. "M"
+0x007d99	Peer Vendor Specific Information [1,0,_]	# "\xC1\xC0" .. "M"
+0x007ea4	MAC Address [0:2]				# "\0\0\0"
+0x007ea5	MAC Address [3:5]				# "\0\0\0"
+0x007ea6	MAC Address [6:8]				# "\0\0\0"
+0x007ea7	MAC Address [9:11]				# "\0\0\0"
 
 ## Near End
-0x79e4	Peer Vendor ID [_,_,0]				# "\0\0M",
-0x79e5	Peer Vendor ID [1:3]				# "ETA",
-0x79ea	Inventory Version [0:2]				# "1_6"
-0x79eb	Inventory Version [3:5]				# "0_8"
-0x79ec	Inventory Version [6:8]				# "255"
-0x79ed	Inventory Version [9:11]			# " MT"
-0x79ee	Inventory Version [12:14]			# "531"
-0x79ef	Inventory Version [15:17]			# "1\0\0"
+0x0079e4	Peer Vendor ID [_,_,0]				# "\0\0M",
+0x0079e5	Peer Vendor ID [1:3]				# "ETA",
+0x0079ea	Inventory Version [0:2]				# "1_6"
+0x0079eb	Inventory Version [3:5]				# "0_8"
+0x0079ec	Inventory Version [6:8]				# "255"
+0x0079ed	Inventory Version [9:11]			# " MT"
+0x0079ee	Inventory Version [12:14]			# "531"
+0x0079ef	Inventory Version [15:17]			# "1\0\0"

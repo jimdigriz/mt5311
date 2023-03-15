@@ -73,6 +73,7 @@ proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mo
 proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number")
 proto.fields.hdr_status = ProtoField.uint8("ebm.hdr.status", "Status", nil, vs_status)
 proto.fields.payload = ProtoField.none("ebm.payload", "Payload")
+proto.fields.padding = ProtoField.none("ebm.padding", "Padding")
 
 proto.fields.cmd = ProtoField.none("ebm.cmd", "Command")
 proto.fields.cmd_type = ProtoField.uint8("ebm.cmd.type", "Type")
@@ -82,7 +83,7 @@ proto.fields.cmd_read_len = ProtoField.uint16("ebm.cmd.reglen", "Register Length
 proto.fields.cmd_read_val = ProtoField.uint24("ebm.cmd.regval", "Register Value", base.HEX)
 --
 proto.fields.data = ProtoField.bytes("ebm.data", "Data")
-proto.fields.padding = ProtoField.none("ebm.padding", "Padding")
+--
 
 proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
 proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
