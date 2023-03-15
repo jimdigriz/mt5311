@@ -203,9 +203,9 @@ function proto.dissector (tvb, pinfo, tree)
 			offset = offset + pi_tvb:len()
 
 			if pinfo.visited then
+				local gpi = pi:add(proto.fields.cmd):set_generated()
+				gpi:add(proto.fields.cmd_type, cmd[1])
 				if cmd[1] == CMD.read_reg then
-					local gpi = pi:add(proto.fields.cmd):set_generated()
-					gpi:add(proto.fields.cmd_type, cmd[1])
 					gpi:add(proto.fields.cmd_read_reg, cmd[3])
 					gpi:add(proto.fields.cmd_read_len, cmd[2])
 				end
@@ -229,7 +229,7 @@ function proto.dissector (tvb, pinfo, tree)
 				--  0                   1                   2                   3
 				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-				-- |     Type      |                    Register                   :
+				-- |   Type = 1    |                    Register                   :
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 				-- |        Register Length        |
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -246,16 +246,34 @@ function proto.dissector (tvb, pinfo, tree)
 				end
 
 				if not pinfo.visited then
-					table.insert(requests[seq]["cmds"], { CMD.read_reg, pi_tvb(4, 2):uint(), pi_tvb(1, 3):uint() })
+					table.insert(requests[seq]["cmds"], { type, pi_tvb(4, 2):uint(), pi_tvb(1, 3):uint() })
+				end
+			elseif type == 2 then	-- ???
+				--  0                   1                   2                   3
+				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+				-- |   Type = 2    |                    Register                   :
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+				-- |        Register Length        |
+				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+				pi_tvb = payload_tvb(offset, 6)
+				pi = payload_tree:add(proto.fields.cmd, pi_tvb())
+				offset = offset + pi_tvb:len()
+
+				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
+
+				if not pinfo.visited then
+					table.insert(requests[seq]["cmds"], { type, pi_tvb(4, 2):uint(), pi_tvb(1, 3):uint() })
 				end
 			else
-				pi = payload_tree:add(proto, payload_tvb(offset), "Unknown")
+				pi = payload_tree:add(proto.fields.cmd, payload_tvb(offset))
 				offset = payload_tvb:len()
 
 				pi:add_proto_expert_info(proto.experts.assert, "Unknown Command")
 
 				if not pinfo.visited then
-					table.insert(requests[seq]["cmds"], { nil })
+					table.insert(requests[seq]["cmds"], { type })
 				end
 			end
 		end
