@@ -1,6 +1,5 @@
 -- The Ethernet Boot & Management (EBM) protocol smells like an
--- RPC for I2C wrapped in HDLC or something. So you ask for a
--- register and it returns its value as 3 octets.
+-- RPC for I2C. You ask for a register and it returns its value.
 --
 -- Everything is guess work, so errors are guarenteed!
 --
@@ -58,12 +57,12 @@ local vs_cmd_type = {
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
 proto.fields.hdr = ProtoField.none("ebm.hdr", "Header")
-proto.fields.flags = ProtoField.bytes("ebm.flags", "Flags")
-proto.fields.code = ProtoField.bool("ebm.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
-proto.fields.seq = ProtoField.uint32("ebm.seq", "Sequence Number")
-proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
-proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
-proto.fields.status = ProtoField.uint8("ebm.status", "Status", nil, vs_status)
+proto.fields.hdr_plen = ProtoField.uint16("ebm.hdr.payload_len", "Payload Length")
+proto.fields.hdr_flags = ProtoField.bytes("ebm.hdr.flags", "Flags")
+proto.fields.hdr_code = ProtoField.bool("ebm.hdr.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
+proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number")
+proto.fields.hdr_status = ProtoField.uint8("ebm.hdr.status", "Status", nil, vs_status)
+proto.fields.payload = ProtoField.none("ebm.payload", "Payload")
 
 proto.fields.cmd = ProtoField.none("ebm.cmd", "Command", base.NONE)
 proto.fields.cmd_type = ProtoField.uint8("ebm.cmd.type", "Type", nil, vs_cmd_type)
@@ -76,8 +75,12 @@ proto.fields.padding = ProtoField.bytes("ebm.padding", "Padding")
 
 proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
 
-local f_code = Field.new("ebm.code")
-local f_seq = Field.new("ebm.seq")
+local f_plen = Field.new("ebm.hdr.payload_len")
+local f_code = Field.new("ebm.hdr.code")
+local f_seq = Field.new("ebm.hdr.seq")
+
+proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
+proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
 
 -- conversation tracking for populating
 -- frametype and reconciling reads with data
@@ -99,35 +102,33 @@ function proto.dissector (tvb, pinfo, tree)
 	--  0                   1                   2                   3
 	--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	-- |                     Flags                     |    Sequence   :
+	-- |         Payload Length        |     Flags     |    Sequence   :
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	-- :                   Sequence                    |     Status    |
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	-- |            Payload
-	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+...
+	-- |            Padding
+	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+...
+	--
+	-- Payload Length (plen)
+	--
+	--    Request - Length of payload field
+	--
+	--    Response - Length of payload incremented by six (6)
+	--               (header length excluding 'plen' field)
 	--
 	-- Flags
-	--        0                   1                   2
-	--        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
-	--       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	--       |0 0 0 0 0 0 0 0 0 0 0 0 B A A B B 0 0 0 0 0 0 1|
-	--       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	--        0 1 2 3 4 5 6 7
+	--       +-+-+-+-+-+-+-+-+
+	--       |C 0 0 0 0 0 0 1|
+	--       +-+-+-+-+-+-+-+-+
 	--
-	--    A
+	--    C (Code)
 	--
 	--        0 - Response
 	--
 	--        1 - Request
-	--
-	--    B
-	--
-	--        0 - Request
-	--
-	--        1 - Response
-	--
-	--    bits 17 - 22
-	--
-	--        Seem to contain something that varies with payload length
 	--
 	-- Status
 	--
@@ -138,33 +139,21 @@ function proto.dissector (tvb, pinfo, tree)
 	local hdr_tvb = tvb(0, 8)
 	local hdr_tree = ebm_tree:add(proto.fields.hdr, hdr_tvb())
 
-	local hdr_flags_tvb = hdr_tvb(0, 3)
-	local hdr_flags = hdr_tree:add(proto.fields.flags, hdr_flags_tvb())
-	hdr_flags:add(proto.fields.code, hdr_flags_tvb(2, 1))	-- bit 16
+	local payload_len_tree = hdr_tree:add(proto.fields.hdr_plen, hdr_tvb(0, 2))
+
+	local hdr_flags_tvb = hdr_tvb(2, 1)
+	local hdr_flags = hdr_tree:add(proto.fields.hdr_flags, hdr_flags_tvb())
+	hdr_flags:add(proto.fields.hdr_code, hdr_flags_tvb())	-- bit 16
 
 	local response = f_code()()
 
 	pinfo.cols.info:append(response and ": Response" or ": Query")
-	if bit.band(hdr_flags_tvb(0, 2):uint(), 0xfff0) ~= 0 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 1-11 not all unset")
-	end
-	if response then
-		if bit.band(hdr_flags_tvb(1, 1):uint(), 0x0f) ~= 9 then
-			hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 12-15 not 0b1001")
-		end
-	else
-		if bit.band(hdr_flags_tvb(1, 1):uint(), 0x0f) ~= 6 then
-			hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 12-15 not 0b0110")
-		end
-	end
-	if bit.band(hdr_flags_tvb(2, 1):uint(), 0x7e) ~= 0 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 17-22 not all unset")
-	end
-	if bit.band(hdr_flags_tvb(2, 1):uint(), 0x01) ~= 1 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags bits 23 not set")
+
+	if bit.band(hdr_flags_tvb():uint(), 0x7f) ~= 0x01 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags & 0x7f not set to 0x01")
 	end
 
-	hdr_tree:add(proto.fields.seq, hdr_tvb(3, 4))
+	hdr_tree:add(proto.fields.hdr_seq, hdr_tvb(3, 4))
 	local seq = f_seq()()
 	if pinfo.visited then
 		hdr_tree:add(proto.fields[response and "frame_request" or "frame_response"], requests[seq][not response]):set_generated()
@@ -173,40 +162,45 @@ function proto.dissector (tvb, pinfo, tree)
 		requests[seq][response] = pinfo.number
 	end
 
-	hdr_tree:add(proto.fields.status, hdr_tvb(7, 1))
+	hdr_tree:add(proto.fields.hdr_status, hdr_tvb(7, 1))
 	local hdr_status_tvb = hdr_tvb(7, 1)
 	if not ((response and hdr_status_tvb:uint() == 0x00) or (not response and hdr_status_tvb:uint() == 0xff)) then
 		hdr_tree:add_proto_expert_info(proto.experts.assert, "Status has unexpected value")
 	end
 
-	local payload_tvb = tvb(8)
-	local payload_tree = ebm_tree:add(proto, payload_tvb(), "Payload")
+	local payload_len = f_plen()()
+	if response then payload_len = payload_len - 6 end
+	local payload_tvb = tvb(8, payload_len)
+	local payload_tree = ebm_tree:add(proto.fields.payload, payload_tvb())
+	if response then payload_len_tree:append_text(" (inc hdr ex plen [= 6 bytes]") end
 
 	local pi, pi_tvb
 	local offset = 0
 	if response then
-		--  0                   1                   2
-		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		-- |                     Data                      |
-		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		--  0                   1                   2                   3
+		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |                             Data                              :
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		--
 		-- Data
 		--
-		--    Always three (3) octets wide
+		--    Length comes from request
 		--
-		--    Use (assumed) length from request
+		--    Note: only ever seen three (3) octets
+		--
 
 		local cmds = requests[seq]["cmds"]
 		for i, cmd in pairs(cmds) do
-			pi_tvb = payload_tvb(offset, math.min(cmd[2], payload_tvb:len() - offset))
-			pi = payload_tree:add(proto.fields.data, pi_tvb())
-			offset = offset + pi_tvb:len()
-
-			if pi_tvb:len() < cmd[2] then
-				payload_tvb:add_proto_expert_info(proto.experts.assert, "Truncated Response")
+			if offset >= payload_tvb:len() then
+				payload_tree:add_proto_expert_info(proto.experts.assert, "Truncated Response")
+				offset = payload_tvb:len()
 				break
 			end
+
+			pi_tvb = payload_tvb(offset, math.min(cmd[2], payload_len - offset))
+			pi = payload_tree:add(proto.fields.data, pi_tvb())
+			offset = offset + pi_tvb:len()
 
 			if pinfo.visited then
 				if cmd[1] == CMD.read_reg then
@@ -216,14 +210,22 @@ function proto.dissector (tvb, pinfo, tree)
 					gpi:add(proto.fields.cmd_read_len, cmd[2])
 				end
 			end
+
+			if pi_tvb:len() < cmd[2] then
+				pi:add_proto_expert_info(proto.experts.assert, "Truncated Data")
+				break
+			end
 		end
 	else
-		while payload_tvb:len() > offset do
-			local type = payload_tvb(offset, 1):uint()
-
-			if type == 0 then
+		while offset < payload_len do
+			if offset >= payload_tvb:len() then
+				payload_tree:add_proto_expert_info(proto.experts.assert, "Truncated Request")
+				offset = payload_tvb:len()
 				break
-			elseif type == CMD.read_reg then
+			end
+
+			local type = payload_tvb(offset, 1):uint()
+			if type == CMD.read_reg then
 				--  0                   1                   2                   3
 				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -259,9 +261,9 @@ function proto.dissector (tvb, pinfo, tree)
 		end
 	end
 
-	if payload_tvb:len() > offset then
-		local padding_tvb = payload_tvb(offset)
-		local padding_tree = payload_tree:add(proto.fields.padding, padding_tvb())
+	if tvb:len() > 8 + payload_len then
+		local padding_tvb = tvb(8 + payload_len)
+		local padding_tree = ebm_tree:add(proto.fields.padding, padding_tvb())
 		for i=1, padding_tvb:len() - 1 do
 			if padding_tvb(i, 1):uint() ~= 0 then
 				padding_tree:add_proto_expert_info(proto.experts.assert, "Padding has non-zero bytes")
