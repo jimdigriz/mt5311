@@ -77,7 +77,6 @@ proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.AS
 
 local f_code = Field.new("ebm.code")
 local f_seq = Field.new("ebm.seq")
-local f_cmd_read_reg = Field.new("ebm.cmd.read_reg")
 
 -- conversation tracking for populating
 -- frametype and reconciling reads with data
@@ -211,11 +210,11 @@ function proto.dissector (tvb, pinfo, tree)
 
 			if type == 0 then
 				break
-			elseif type == 1 then	-- Read Register (Type = 1)
+			elseif type == CMD.read_reg then
 				--  0                   1                   2                   3
 				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-				-- |     Type      |0 0 0 0 0 0 0 0|            Register           :
+				-- |     Type      |                    Register                   :
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 				-- |        Register Length        |
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -225,18 +224,14 @@ function proto.dissector (tvb, pinfo, tree)
 				offset = offset + pi_tvb:len()
 
 				pi:add(proto.fields.cmd, pi_tvb(0, 1))
-				if pi_tvb(1, 1):uint() ~= 0 then
-					pi:add_proto_expert_info(proto.experts.assert, "Flags not all unset")
-				end
-				pi:add(proto.fields.cmd_read_reg, pi_tvb(2, 2))
+				pi:add(proto.fields.cmd_read_reg, pi_tvb(1, 3))
 				pi:add(proto.fields.cmd_read_len, pi_tvb(4, 2))
 				if pi_tvb(4, 2):uint() ~= 3 then
 					pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
 				end
 
-				local cmd_read_reg = f_cmd_read_reg()()
 				if not pinfo.visited then
-					table.insert(requests[seq]["cmds"], { CMD.read_reg, cmd_read_reg })
+					table.insert(requests[seq]["cmds"], { CMD.read_reg, pi_tvb(1, 3):uint() })
 				end
 			else
 				pi = payload_tree:add(proto, payload_tvb(offset), "Unknown")
