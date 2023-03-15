@@ -130,8 +130,6 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--        1 - Request
 	--
-	--        2 - ???
-	--
 	-- Status
 	--
 	--    0 - Success
@@ -145,7 +143,7 @@ function proto.dissector (tvb, pinfo, tree)
 
 	local hdr_flags_tvb = hdr_tvb(2, 1)
 	local hdr_flags = hdr_tree:add(proto.fields.hdr_flags, hdr_flags_tvb())
-	hdr_flags:add(proto.fields.hdr_code, hdr_flags_tvb())	-- bit 16
+	hdr_flags:add(proto.fields.hdr_code, hdr_flags_tvb())
 
 	local response = f_code()()
 
@@ -176,7 +174,7 @@ function proto.dissector (tvb, pinfo, tree)
 	if payload_len > 0 then
 		payload_tvb = tvb(8, payload_len)
 		payload_tree = ebm_tree:add(proto.fields.payload, payload_tvb())
-		if response then payload_len_tree:append_text(" (inc hdr ex plen [= 6 bytes]") end
+		if response then payload_len_tree:append_text(" (inc hdr ex plen [= 6 bytes])") end
 	end
 
 	if tvb:len() > 8 + payload_len then
