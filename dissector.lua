@@ -5,7 +5,18 @@
 --
 -- Assumptions are codified with expert.group.ASSUMPTION
 
+local vs_dir = {
+	[1]	= "Response",
+	[2]	= "Request"
+}
+
 local vs_mode = {
+	[0]	= "Control",
+	[3]	= "System"
+}
+
+local vs_code = {
+	[0]	= "Control",
 	[1]	= "Query"
 }
 
@@ -62,9 +73,10 @@ local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
 proto.fields.hdr = ProtoField.none("ebm.hdr", "Header")
 proto.fields.hdr_plen = ProtoField.uint16("ebm.hdr.payload_len", "Payload Length")
-proto.fields.hdr_flags = ProtoField.bytes("ebm.hdr.flags", "Flags")
-proto.fields.hdr_code = ProtoField.bool("ebm.hdr.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
-proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mode, 0x03)
+proto.fields.hdr_flags = ProtoField.uint8("ebm.hdr.flags", "Flags", base.HEX)
+proto.fields.hdr_dir = ProtoField.bool("ebm.hdr.dir", "Direction", 8, vs_dir, 0x80)
+proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mode, 0x30)
+proto.fields.hdr_code = ProtoField.uint8("ebm.hdr.code", "Code", base.DEC, vs_code, 0x03)
 proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number")
 proto.fields.hdr_status = ProtoField.uint8("ebm.hdr.status", "Status", nil, vs_status)
 proto.fields.payload = ProtoField.none("ebm.payload", "Payload")
@@ -78,14 +90,16 @@ proto.fields.cmd_read_len = ProtoField.uint16("ebm.cmd.read_len", "Length")
 proto.fields.data = ProtoField.bytes("ebm.data", "Data")
 proto.fields.padding = ProtoField.bytes("ebm.padding", "Padding")
 
+proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
+proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
+
 proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
 
 local f_plen = Field.new("ebm.hdr.payload_len")
+local f_dir = Field.new("ebm.hdr.dir")
 local f_code = Field.new("ebm.hdr.code")
 local f_seq = Field.new("ebm.hdr.seq")
-
-proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
-proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
+local f_status = Field.new("ebm.hdr.status")
 
 -- conversation tracking for populating
 -- frametype and reconciling reads with data
@@ -126,16 +140,24 @@ function proto.dissector (tvb, pinfo, tree)
 	-- Flags
 	--        0 1 2 3 4 5 6 7
 	--       +-+-+-+-+-+-+-+-+
-	--       |C 0 0 0 0 0 M M|
+	--       |D 0 M M 0 0 C C|
 	--       +-+-+-+-+-+-+-+-+
 	--
-	--    C (Code)
+	--    D (Direction)
 	--
 	--        0 - Response
 	--
 	--        1 - Request
 	--
 	--    M (Mode)
+	--
+	--        0 - Control
+	--
+	--        3 - System
+	--
+	--    C (Code)
+	--
+	--        0 - Control
 	--
 	--        1 - Query
 	--
@@ -155,14 +177,15 @@ function proto.dissector (tvb, pinfo, tree)
 	local hdr_flags_tvb = hdr_tvb(2, 1)
 	local hdr_flags = hdr_tree:add(proto.fields.hdr_flags, hdr_flags_tvb())
 
-	if bit.band(hdr_flags_tvb():uint(), 0x7c) ~= 0 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flag bits 1-5 not all unset")
+	if bit.band(hdr_flags_tvb():uint(), 0x4c) ~= 0 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flag bits 1, 4 and 5 not all unset")
 	end
 
-	hdr_flags:add(proto.fields.hdr_code, hdr_flags_tvb())
+	hdr_flags:add(proto.fields.hdr_dir, hdr_flags_tvb())
 	hdr_flags:add(proto.fields.hdr_mode, hdr_flags_tvb())
+	hdr_flags:add(proto.fields.hdr_code, hdr_flags_tvb())
 
-	local response = f_code()()
+	local response = f_dir()()
 
 	pinfo.cols.info:append(response and ": Response" or ": Query")
 
@@ -176,8 +199,8 @@ function proto.dissector (tvb, pinfo, tree)
 	end
 
 	hdr_tree:add(proto.fields.hdr_status, hdr_tvb(7, 1))
-	local hdr_status_tvb = hdr_tvb(7, 1)
-	if not ((response and hdr_status_tvb:uint() == 0x00) or (not response and hdr_status_tvb:uint() == 0xff)) then
+	local hdr_status = f_status()()
+	if not ((response and hdr_status == 0x00) or (not response and hdr_status == 0xff)) then
 		hdr_tree:add_proto_expert_info(proto.experts.assert, "Status has unexpected value")
 	end
 
@@ -202,6 +225,11 @@ function proto.dissector (tvb, pinfo, tree)
 	end
 
 	if payload_len == 0 then
+		return len
+	end
+
+	if f_code()() ~= 1 then
+		payload_tree:add_proto_expert_info(proto.experts.assert, "Format Unknown")
 		return len
 	end
 
