@@ -130,6 +130,8 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--        1 - Request
 	--
+	--        2 - ???
+	--
 	-- Status
 	--
 	--    0 - Success
