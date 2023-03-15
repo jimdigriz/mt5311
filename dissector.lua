@@ -51,13 +51,13 @@ local vs_status = {
 local CMD = {
 	["read_reg"]	= 1
 }
-local vs_cmd = {
+local vs_cmd_type = {
 	[1]		= "Read Register"
 }
 
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
-proto.fields.hdr = ProtoField.bytes("ebm.hdr", "Header")
+proto.fields.hdr = ProtoField.none("ebm.hdr", "Header")
 proto.fields.flags = ProtoField.bytes("ebm.flags", "Flags")
 proto.fields.code = ProtoField.bool("ebm.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
 proto.fields.seq = ProtoField.uint32("ebm.seq", "Sequence Number")
@@ -65,7 +65,8 @@ proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", ni
 proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
 proto.fields.status = ProtoField.uint8("ebm.status", "Status", nil, vs_status)
 
-proto.fields.cmd = ProtoField.uint8("ebm.cmd", "Type", nil, vs_cmd)
+proto.fields.cmd = ProtoField.none("ebm.cmd", "Command", base.NONE)
+proto.fields.cmd_type = ProtoField.uint8("ebm.cmd.type", "Type", nil, vs_cmd_type)
 --
 proto.fields.cmd_read_reg = ProtoField.uint16("ebm.cmd.read_reg", "Address", base.HEX, vs_register)
 proto.fields.cmd_read_len = ProtoField.uint16("ebm.cmd.read_len", "Length")
@@ -123,6 +124,10 @@ function proto.dissector (tvb, pinfo, tree)
 	--        0 - Request
 	--
 	--        1 - Response
+	--
+	--    bits 17 - 22
+	--
+	--        Seem to contain something that varies with payload length
 	--
 	-- Status
 	--
@@ -205,8 +210,10 @@ function proto.dissector (tvb, pinfo, tree)
 
 			if pinfo.visited then
 				if cmd[1] == CMD.read_reg then
-					local regname = vs_register[cmd[3]] or "Unknown"
-					pi:append_text(" (Read Register: " .. regname .. " [0x" .. string.format("%x", cmd[3]) .. "])")
+					local gpi = pi:add(proto.fields.cmd):set_generated()
+					gpi:add(proto.fields.cmd_type, cmd[1])
+					gpi:add(proto.fields.cmd_read_reg, cmd[3])
+					gpi:add(proto.fields.cmd_read_len, cmd[2])
 				end
 			end
 		end
@@ -226,10 +233,10 @@ function proto.dissector (tvb, pinfo, tree)
 				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 				pi_tvb = payload_tvb(offset, 6)
-				pi = payload_tree:add(proto, pi_tvb(), "Read Register")
+				pi = payload_tree:add(proto.fields.cmd, pi_tvb())
 				offset = offset + pi_tvb:len()
 
-				pi:add(proto.fields.cmd, pi_tvb(0, 1))
+				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
 				pi:add(proto.fields.cmd_read_reg, pi_tvb(1, 3))
 				pi:add(proto.fields.cmd_read_len, pi_tvb(4, 2))
 				if pi_tvb(4, 2):uint() ~= 3 then
