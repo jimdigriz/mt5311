@@ -1,4 +1,4 @@
-Utilities used to work with the Metanoia/Proscend VDSL2 SFP Modem.
+Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
 
 ## Related Links
 
