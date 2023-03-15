@@ -5,6 +5,10 @@
 --
 -- Assumptions are codified with expert.group.ASSUMPTION
 
+local vs_mode = {
+	[1]	= "Query"
+}
+
 local vs_register = {}
 function read_register_map ()
 	local status
@@ -60,6 +64,7 @@ proto.fields.hdr = ProtoField.none("ebm.hdr", "Header")
 proto.fields.hdr_plen = ProtoField.uint16("ebm.hdr.payload_len", "Payload Length")
 proto.fields.hdr_flags = ProtoField.bytes("ebm.hdr.flags", "Flags")
 proto.fields.hdr_code = ProtoField.bool("ebm.hdr.code", "Response", 8, { "this is a response", "this is a request" }, 0x80)
+proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mode, 0x03)
 proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number")
 proto.fields.hdr_status = ProtoField.uint8("ebm.hdr.status", "Status", nil, vs_status)
 proto.fields.payload = ProtoField.none("ebm.payload", "Payload")
@@ -121,7 +126,7 @@ function proto.dissector (tvb, pinfo, tree)
 	-- Flags
 	--        0 1 2 3 4 5 6 7
 	--       +-+-+-+-+-+-+-+-+
-	--       |C 0 0 0 0 0 0 1|
+	--       |C 0 0 0 0 0 M M|
 	--       +-+-+-+-+-+-+-+-+
 	--
 	--    C (Code)
@@ -129,6 +134,12 @@ function proto.dissector (tvb, pinfo, tree)
 	--        0 - Response
 	--
 	--        1 - Request
+	--
+	--    M (Mode)
+	--
+	--        1 - Query
+	--
+	--        2 - ???
 	--
 	-- Status
 	--
@@ -143,15 +154,17 @@ function proto.dissector (tvb, pinfo, tree)
 
 	local hdr_flags_tvb = hdr_tvb(2, 1)
 	local hdr_flags = hdr_tree:add(proto.fields.hdr_flags, hdr_flags_tvb())
+
+	if bit.band(hdr_flags_tvb():uint(), 0x7c) ~= 0 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flag bits 1-5 not all unset")
+	end
+
 	hdr_flags:add(proto.fields.hdr_code, hdr_flags_tvb())
+	hdr_flags:add(proto.fields.hdr_mode, hdr_flags_tvb())
 
 	local response = f_code()()
 
 	pinfo.cols.info:append(response and ": Response" or ": Query")
-
-	if bit.band(hdr_flags_tvb():uint(), 0x7f) ~= 0x01 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flags & 0x7f not set to 0x01")
-	end
 
 	hdr_tree:add(proto.fields.hdr_seq, hdr_tvb(3, 4))
 	local seq = f_seq()()
