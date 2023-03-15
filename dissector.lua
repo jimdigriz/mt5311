@@ -138,6 +138,7 @@ function proto.dissector (tvb, pinfo, tree)
 	--               (header length excluding 'plen' field)
 	--
 	-- Flags
+	--
 	--        0 1 2 3 4 5 6 7
 	--       +-+-+-+-+-+-+-+-+
 	--       |D 0 M M 0 0 C C|
@@ -145,23 +146,23 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--    D (Direction)
 	--
-	--        0 - Response
+	--       0 - Response
 	--
-	--        1 - Request
+	--       1 - Request
 	--
 	--    M (Mode)
 	--
-	--        0 - Control
+	--       0 - Control
 	--
-	--        3 - System
+	--       3 - System
 	--
 	--    C (Code)
 	--
-	--        0 - Control
+	--       0 - Control
 	--
-	--        1 - Query
+	--       1 - Query
 	--
-	--        2 - ???
+	--       2 - ???
 	--
 	-- Status
 	--
