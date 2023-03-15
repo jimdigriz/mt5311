@@ -10,14 +10,14 @@ local vs_dir = {
 	[2]	= "Request"
 }
 
-local vs_mode = {
-	[0]	= "Control",
+local vs_class = {
+	[0]	= "Normal",
 	[3]	= "System"
 }
 
-local vs_code = {
-	[0]	= "Control",
-	[1]	= "Query"
+local vs_mode = {
+	[1]	= "Read",
+	[2]	= "Write"
 }
 
 local vs_register = {}
@@ -62,33 +62,27 @@ local vs_status = {
 	[255] = "No error"
 }
 
-local CMD = {
-	["read_reg"]	= 1
-}
-local vs_cmd_type = {
-	[1]		= "Read Register"
-}
-
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
 
 proto.fields.hdr = ProtoField.none("ebm.hdr", "Header")
 proto.fields.hdr_plen = ProtoField.uint16("ebm.hdr.payload_len", "Payload Length")
 proto.fields.hdr_flags = ProtoField.uint8("ebm.hdr.flags", "Flags", base.HEX)
 proto.fields.hdr_dir = ProtoField.bool("ebm.hdr.dir", "Direction", 8, vs_dir, 0x80)
-proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mode, 0x30)
-proto.fields.hdr_code = ProtoField.uint8("ebm.hdr.code", "Code", base.DEC, vs_code, 0x03)
+proto.fields.hdr_class = ProtoField.uint8("ebm.hdr.class", "Class", base.DEC, vs_class, 0x30)
+proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mode, 0x03)
 proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number")
 proto.fields.hdr_status = ProtoField.uint8("ebm.hdr.status", "Status", nil, vs_status)
 proto.fields.payload = ProtoField.none("ebm.payload", "Payload")
 
-proto.fields.cmd = ProtoField.none("ebm.cmd", "Command", base.NONE)
-proto.fields.cmd_type = ProtoField.uint8("ebm.cmd.type", "Type", nil, vs_cmd_type)
+proto.fields.cmd = ProtoField.none("ebm.cmd", "Command")
+proto.fields.cmd_type = ProtoField.uint8("ebm.cmd.type", "Type")
 --
-proto.fields.cmd_read_reg = ProtoField.uint16("ebm.cmd.read_reg", "Address", base.HEX, vs_register)
-proto.fields.cmd_read_len = ProtoField.uint16("ebm.cmd.read_len", "Length")
+proto.fields.cmd_read_reg = ProtoField.uint24("ebm.cmd.reg", "Register Address", base.HEX, vs_register)
+proto.fields.cmd_read_len = ProtoField.uint16("ebm.cmd.reglen", "Register Length")
+proto.fields.cmd_read_val = ProtoField.uint24("ebm.cmd.regval", "Register Value", base.HEX)
 --
 proto.fields.data = ProtoField.bytes("ebm.data", "Data")
-proto.fields.padding = ProtoField.bytes("ebm.padding", "Padding")
+proto.fields.padding = ProtoField.none("ebm.padding", "Padding")
 
 proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
 proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
@@ -97,7 +91,7 @@ proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.AS
 
 local f_plen = Field.new("ebm.hdr.payload_len")
 local f_dir = Field.new("ebm.hdr.dir")
-local f_code = Field.new("ebm.hdr.code")
+local f_mode = Field.new("ebm.hdr.mode")
 local f_seq = Field.new("ebm.hdr.seq")
 local f_status = Field.new("ebm.hdr.status")
 
@@ -141,7 +135,7 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--        0 1 2 3 4 5 6 7
 	--       +-+-+-+-+-+-+-+-+
-	--       |D 0 M M 0 0 C C|
+	--       |D 0 C C 0 0 M M|
 	--       +-+-+-+-+-+-+-+-+
 	--
 	--    D (Direction)
@@ -150,19 +144,17 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--       1 - Request
 	--
-	--    M (Mode)
+	--    C (Class?)
 	--
-	--       0 - Control
+	--       0 - Normal
 	--
 	--       3 - System
 	--
-	--    C (Code)
+	--    M (Mode)
 	--
-	--       0 - Control
+	--       1 - Read
 	--
-	--       1 - Query
-	--
-	--       2 - ???
+	--       2 - Write
 	--
 	-- Status
 	--
@@ -183,8 +175,8 @@ function proto.dissector (tvb, pinfo, tree)
 	end
 
 	hdr_flags:add(proto.fields.hdr_dir, hdr_flags_tvb())
+	hdr_flags:add(proto.fields.hdr_class, hdr_flags_tvb())
 	hdr_flags:add(proto.fields.hdr_mode, hdr_flags_tvb())
-	hdr_flags:add(proto.fields.hdr_code, hdr_flags_tvb())
 
 	local response = f_dir()()
 
@@ -229,11 +221,6 @@ function proto.dissector (tvb, pinfo, tree)
 		return len
 	end
 
-	if f_code()() ~= 1 then
-		payload_tree:add_proto_expert_info(proto.experts.assert, "Format Unknown")
-		return len
-	end
-
 	local pi, pi_tvb
 	local offset = 0
 	if response then
@@ -257,91 +244,67 @@ function proto.dissector (tvb, pinfo, tree)
 				break
 			end
 
-			-- handle format unknown
-			if not cmd[2] then cmd[2] = payload_len - offset end
-
-			pi_tvb = payload_tvb(offset, math.min(cmd[2], payload_len - offset))
+			pi_tvb = payload_tvb(offset, math.min(cmd[3], payload_len - offset))
 			pi = payload_tree:add(proto.fields.data, pi_tvb())
 			offset = offset + pi_tvb:len()
 
 			if pinfo.visited then
 				local gpi = pi:add(proto.fields.cmd):set_generated()
 				gpi:add(proto.fields.cmd_type, cmd[1])
-				if cmd[1] == CMD.read_reg then
-					gpi:add(proto.fields.cmd_read_reg, cmd[3])
-					gpi:add(proto.fields.cmd_read_len, cmd[2])
-				end
+				gpi:add(proto.fields.cmd_read_reg, cmd[2])
 			end
 
-			if not cmd[2] then
-				pi:add_proto_expert_info(proto.experts.assert, "Format Unknown")
-				break
-			elseif pi_tvb:len() < cmd[2] then
+			if pi_tvb:len() < cmd[3] then
 				pi:add_proto_expert_info(proto.experts.assert, "Truncated Data")
 				break
 			end
 		end
 	else
+		--  0                   1                   2                   3
+		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |      Type     |                    Register                   |
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |        Register Length        |              Value            :
+		-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		-- |     Value     |
+		-- +-+-+-+-+-+-+-+-+
+		--
+		-- Type
+		--
+		--    1 - ???
+		--
+		--    2 - ???
+		--
+		-- Value
+		--
+		--    Only present when mode is two (2) [write]
+
 		while offset < payload_len do
 			if offset >= payload_len then
 				payload_tree:add_proto_expert_info(proto.experts.assert, "Truncated Request")
 				break
 			end
 
-			local type = payload_tvb(offset, 1):uint()
-			if type == CMD.read_reg then
-				--  0                   1                   2                   3
-				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-				-- |   Type = 1    |                    Register                   |
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-				-- |        Register Length        |
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+			local mode = f_mode()()
 
-				pi_tvb = payload_tvb(offset, 6)
-				pi = payload_tree:add(proto.fields.cmd, pi_tvb())
-				offset = offset + pi_tvb:len()
+			pi_tvb = payload_tvb(offset, mode == 1 and 6 or 9)
+			pi = payload_tree:add(proto.fields.cmd, pi_tvb())
+			offset = offset + pi_tvb:len()
 
-				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
-				pi:add(proto.fields.cmd_read_reg, pi_tvb(1, 3))
-				pi:add(proto.fields.cmd_read_len, pi_tvb(4, 2))
-				if pi_tvb(4, 2):uint() ~= 3 then
-					pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
-				end
+			pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
+			pi:add(proto.fields.cmd_read_reg, pi_tvb(1, 3))
+			pi:add(proto.fields.cmd_read_len, pi_tvb(4, 2))
+			if mode == 2 then
+				pi:add(proto.fields.cmd_read_val, pi_tvb(6, 3))
+			end
 
-				if not pinfo.visited then
-					table.insert(requests[seq]["cmds"], { type, pi_tvb(4, 2):uint(), pi_tvb(1, 3):uint() })
-				end
-			elseif type == 2 then	-- ???
-				--  0                   1                   2                   3
-				--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-				-- |   Type = 2    |                    Register                   |
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-				-- |        Register Length        |
-				-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+			if pi_tvb(4, 2):uint() ~= 3 then
+				pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
+			end
 
-				pi_tvb = payload_tvb(offset, 6)
-				pi = payload_tree:add(proto.fields.cmd, pi_tvb())
-				offset = offset + pi_tvb:len()
-
-				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
-
-				if not pinfo.visited then
-					table.insert(requests[seq]["cmds"], { type, pi_tvb(4, 2):uint(), pi_tvb(1, 3):uint() })
-				end
-			else
-				pi_tvb = payload_tvb(offset)
-				pi = payload_tree:add(proto.fields.cmd, pi_tvb)
-				offset = offset + pi_tvb:len()
-
-				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
-
-				pi:add_proto_expert_info(proto.experts.assert, "Unknown Command")
-
-				if not pinfo.visited then
-					table.insert(requests[seq]["cmds"], { type })
-				end
+			if not pinfo.visited then
+				table.insert(requests[seq]["cmds"], { pi_tvb(0, 1):uint(), pi_tvb(1, 3):uint(), pi_tvb(4, 2):uint() })
 			end
 		end
 	end
