@@ -26,7 +26,7 @@ function read_register_map ()
 
 	local line_count = 0
 	local warn = function (msg)
-		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg)
+		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg .. ", ignoring")
 	end
 	for line in io.lines("register.map") do
 		line_count = line_count + 1
@@ -44,14 +44,16 @@ function read_register_map ()
 		if #r == 1 or #r == 2 then
 			status, r[1] = pcall(function () return tonumber(r[1]) end)
 			if status then
-				if #r == 2 then
+				if vs_register[r[1]] then
+					warn("duplicate register")
+				elseif #r == 2 then
 					vs_register[r[1]] = r[2]
 				end
 			else
-				warn("unparsable register value in register.map, ignoring")
+				warn("unparsable register value in register.map")
 			end
 		elseif #r ~= 0 then
-				warn("unparsable in register.map, ignoring")
+				warn("unparsable in register.map")
 		end
 	end
 end
