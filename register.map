@@ -294,8 +294,8 @@
 # Near End
 0x007d9a	CPE Vendor ID [2,1,0]				# "TEM"    ---------/--> META
 0x007d9b	CPE Vendor ID (and SpecInfo) [SI1,SI0,3]	# "\0\0A"           \--> 0000 [SpecInfo]
-#0x0079e4	CPE Vendor ID (and SpecInfo) [SI1,SI0,0]	# "\0\0M"  ---------/--> 0000 [SpecInfo]
-#0x0079e5	CPE Vendor ID [1:3]				# "ETA"             \--> META
+0x0079e4	CPE Vendor ID (and SpecInfo) [SI1,SI0,0]	# "\0\0M"  ---------/--> 0000 [SpecInfo]
+0x0079e5	CPE Vendor ID [1:3]				# "ETA"             \--> META
 0x0079ea	CPE Inventory Version [0:2]			# "1_6"    ---------\
 0x0079eb	CPE Inventory Version [3:5]			# "0_8"             |
 0x0079ec	CPE Inventory Version [6:8]			# "255"             |
@@ -324,24 +324,21 @@
 0x0076ff	Tone dB (3953-3960)				# "\x00\x03\x1c" = -73.6
 0x007660	Tone dB (3961-3968)				# "\x00\x03\x1a" = -73.4
 0x007661	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007662	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007663	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007664	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007665	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007666	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007667	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007668	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007669	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x00766a	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x00766b	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x00766c	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x00766d	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x00766e	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x00766f	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-0x007670	Tone dB (3969-3976) [?]				# "\x00\x03\xff"
-
-# QLN: SCStatusSegmentQln of Line 1
-
+0x007662	Tone dB (3977-3984) [?]				# "\x00\x03\xff"
+0x007663	Tone dB (3985-3992) [?]				# "\x00\x03\xff"
+0x007664	Tone dB (3993-4000) [?]				# "\x00\x03\xff"
+0x007665	Tone dB (4001-4008) [?]				# "\x00\x03\xff"
+0x007666	Tone dB (4009-4016) [?]				# "\x00\x03\xff"
+0x007667	Tone dB (4017-4024) [?]				# "\x00\x03\xff"
+0x007668	Tone dB (4025-4032) [?]				# "\x00\x03\xff"
+0x007669	Tone dB (4033-4040) [?]				# "\x00\x03\xff"
+0x00766a	Tone dB (4041-4048) [?]				# "\x00\x03\xff"
+0x00766b	Tone dB (4049-4056) [?]				# "\x00\x03\xff"
+0x00766c	Tone dB (4057-4064) [?]				# "\x00\x03\xff"
+0x00766d	Tone dB (4065-4072) [?]				# "\x00\x03\xff"
+0x00766e	Tone dB (4073-4080) [?]				# "\x00\x03\xff"
+0x00766f	Tone dB (4081-4088) [?]				# "\x00\x03\xff"
+0x007670	Tone dB (4089-4096) [?]				# "\x00\x03\xff"
 
 ####
 
