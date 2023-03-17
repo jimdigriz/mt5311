@@ -34,9 +34,9 @@ To use a basic Ethernet Boot & Management (EBM) protocol dissector:
 
 It looks like the "Dump SOC" starts at (roughly) frame number 409 with the value of `xdslTwConfig` being in frame 426.
 
-## SNMP AgentX
+## SNMP
 
-An [SNMP AgentX](http://www.net-snmp.org/docs/README.agentx.html) is planned...
+An [SNMP frontend](http://www.net-snmp.org/) is planned...
 
 ## Official
 
