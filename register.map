@@ -10,6 +10,7 @@
 ### Sample values are included as a comment at the end of each line
 
 # System table of line 1
+# Frames 425 - 426
 0x006c39	xdslTwConfig					# "\xE4\x79\x9e"
 0x006d36	xdslTwConfig2					# "\x86\x20\xEE"
 0x006e6f	xdslTwConfig3					# "\x1C\x62\xC0"
@@ -20,6 +21,7 @@
 0x006d73	ModemErrOvrflow					# "\x00\x00\x00"
 
 # Interface table of line 1
+# Frames 427 - 428
 0x006c4e	CfgM2MiiCtlReg					# "\x2F\x73\x18"
 0x006c50	CfgM2UtpCfgReg					# "\x04\x00\x80"
 0x006e36	CfgM2QosfrVd					# "\x00\x0C\x02"
@@ -27,6 +29,7 @@
 0x006c3c	xdslCfgHwConfig					# "\x00\x00\x02"
 
 # Band profile table of line 1
+# Frames 429 - 430
 0x007b0a	xdsl2LConfProfXdslMode				# "\x00\x00\x3A"
 0x007b60	xdsl2LConfProfPsdMaskSelectUs			# "\x00\x00\x01"
 0x007abe	xdsl2LConfProfProfiles				# "\x00\x00\x80"
@@ -52,6 +55,7 @@
 0x006d33	xdslVdsl2ProfilesLimit30a			# "\xD9\x6A\x6A"
 
 # Channel profile table of line 1
+# Frames 431 - 432
 0x007bdd	xdsl2ChConfProfMinProtection8Us0		# "\x00\x00\x03"
 0x007bdc	xdsl2ChConfProfMinProtection8Ds0		# "\x00\x00\x03"
 0x007bdb	xdsl2ChConfProfMinProtectionUs0			# "\x00\x00\x04"
@@ -72,6 +76,7 @@
 0x007a82	xdsl2LConfProfMsgMinDs				# "\x00\x00\x10"
 
 # UPBO table of line 1
+# Frames 433 - 434
 0x007ae6	xdsl2LConfProfUpboKL				# "\x00\x00\x00"
 0x007ae7	xdsl2LConfProfUpboKLF				# "\x00\x01\x01"
 0x007bbc	xdsl2LConfProfUpboPsdA0				# "\x00\x0F\xA0"
@@ -84,6 +89,7 @@
 0x007bcc	xdsl2LConfProfUpboPsdB3				# "\x00\x00\x00"
 
 # DPBO table of line 1
+# Frames 435 - 436
 0x007adf	xdsl2LConfProfDpboEsEL				# "\x00\x00\x00"
 0x007abf	xdsl2LConfProfDpboEPsd				# "\x44\x00\x00"
 0x007ae0	xdsl2LConfProfDpboEsCableModelA			# "\x00\x01\x00"
@@ -94,6 +100,7 @@
 0x007ae5	xdsl2LConfProfDpboFMax				# "\x00\x01\x00"
 
 # SRA table of line 1
+# Frames 437 - 438
 0x007a71	xdsl2LConfProfRaModeDs				# "\x00\x00\x02"
 0x007a72	xdsl2LConfProfRaModeUs				# "\x00\x00\x02"
 0x007a73	xdsl2LConfProfRaUsNrmDs				# "\x00\x00\x00"
@@ -106,15 +113,18 @@
 0x007a7a	xdsl2LConfProfRaDsTimeUs			# "\x00\x00\x1E"
 
 # VNS table of line 1
+# Frames 439 - 440
 0x007a84	xdsl2LConfProfSnrModeDs				# "\x00\x00\x01"
 0x007a85	xdsl2LConfProfSnrModeUs				# "\x00\x00\x01"
 0x007a86	xdsl2LConfProfTxRefVnDs				# "\x00\x00\x01"
 0x007aa6	xdsl2LConfProfTxRefVnUs				# "\x00\x00\x01"
 
 # RFI table of line 1
+# Frames 441 - 442
 0x007a51	xdsl2LConfProfRfiBands				# "\x00\x00\x00"
 
 # G.inp configuration table of line 1
+# Frames 443 - 444
 0x007f5b	xdslRtxChConfDsRtxMode				# "\x00\x00\x00"
 0x007f5c	xdslRtxChConfUsRtxMode				# "\x00\x00\x00"
 0x007f5d	xdslRtxChConfDsMinEtrRtx			# "\x00\x01\x00"
@@ -143,6 +153,7 @@
 0x007f74	xdslRtxChConfUsLeftrThresh			# "\x00\x00\x00"
 
 # G.inp status table of line 1
+# Frames 445 - 446
 0x007f75	xdslRtxChStatusOtUnit				# "\x00\x00\x01"
 0x007f8b	xdslRtxChStatusRtUnit				# "\x00\x00\x02"
 0x007f76	xdslRtxChStatusOtRtxUsed			# "\x00\x00\x00"
@@ -181,6 +192,7 @@
 0x007f9c	xdslRtxChStatusRtPreviousEtr			# "\x00\xA8\xB6"
 
 # Additional Mibs
+# Frames 447 - 448
 0x006e7e	xdslCfgIopFixMeta0				# "\xFF\xFF\xFB"
 0x006e7f	xdslCfgIopFixMeta1				# "\xFF\xFF\xFF"
 0x006e80	xdslCfgIopFixMeta2				# "\xFF\xFF\xFF"
@@ -220,11 +232,13 @@
 0x006ead	xdslCfgIopFixTopLvlMaxDsRate			# "\x00\x00\x00"
 
 # checking ModemErrBuf
+# Frames 459 - 460
 0x00001d	ModemStatus					# "\x00\x00\x11"
 0x006c69	xdslLineDiagTrn					# "\xFF\xFF\xFF"
 0x006c6a	xdslLineDiagTrnD				# "\xFF\xFF\xFF"
 0x006c6b	xdslLineDiagTrnDD				# "\xFF\xFF\xFF"
 0x007f59	xdsl2MetanoiaRtFailureReasons			# "\x00\x00\x05"
+# Frames 461 - 462
 0x006d53	ModemErrBuf[0:2]				# "\x00\x00\x00"
 0x006d54	ModemErrBuf[3:5]				# "\x00\x00\x00"
 0x006d55	ModemErrBuf[6:8]				# "\x00\x00\x00"
@@ -259,15 +273,16 @@
 0x006d72	ModemErrBuf[93:95]				# "\x00\x00\x00"
 
 # Unlabelled dump SoC regs
+# Frames 1181 - 1244 [again at Frames 1489 - 1552]
 #0x004c00
 #[snipped]
 #0x0053ff
 
+# Frames 1245 - 1246 [again at Frames 1553 - 1554]
 0x006d7a	CfgDisableRecovery				# writes 0x000000 and 0x0000FD
 
-# [Frame 1555]
-
 # Information
+# Frames 1555 - 1556
 0x006f21	xdsl2LineStatusAttainableRateUs			# 6531 (kbps)
 0x006f20	xdsl2LineStatusAttainableRateDs			# 48244 (kbps)
 0x007004	xdsl2ChStatusActDataRate0 (US)			# 6530 (kbps)
@@ -282,6 +297,12 @@
 0x006f19	xdsl2LineStatusXtuTransSys			# 57
 
 # Firmware version
+# Frames 83 - 86
+0x007ea4	CO MAC Address [0:2]				# "\0\0\0"
+0x007ea5	CO MAC Address [3:5]				# "\0\0\0"
+0x007ea6	CO MAC Address [6:8]				# "\0\0\0"
+0x007ea7	CO MAC Address [9:11]				# "\0\0\0"
+# Frames 1557 - 1558
 # Far End
 0x007d98	CO Vendor ID [2,0,1]				# "CBD"             /--> BDCM
 0x007d99	CO Vendor ID (and SpecInfo) [SI1,SI0,3]		# "\xC1\xC0" .. "M" \--> C01C [SpecInfo]
@@ -303,23 +324,41 @@
 0x0079ee	CPE Inventory Version [12:14]			# "531"             |
 0x0079ef	CPE Inventory Version [15:17]			# "1\0\0"           \--> 1_60_8255 MT5311
 
-0x007ea4	CO MAC Address [0:2]				# "\0\0\0"
-0x007ea5	CO MAC Address [3:5]				# "\0\0\0"
-0x007ea6	CO MAC Address [6:8]				# "\0\0\0"
-0x007ea7	CO MAC Address [9:11]				# "\0\0\0"
-
-# [Frame 1671]
+# Band Plan (interleaves US0:DS1:US1:DS2:...)
+# Frames 1563 - 1600
+0x006e37	Band Plan US0 Start				# "\x00\x00\x07" = 7
+0x006e38	Band Plan US0 End				# "\x00\x00\x20" = 32
+0x006e39	Band Plan US1 Start				# "\x00\x03\x67" = 871
+0x006e3a	Band Plan US1 End				# "\x00\x04\xb5" = 1205
+0x006e3b	Band Plan US2 Start				# "\x00\x00\x00" = 0
+0x006e3c	Band Plan US2 End				# "\x00\x00\x00" = 0
+0x006e3d	Band Plan US3 Start				# "\x00\x00\x00" = 0
+0x006e3e	Band Plan US3 End				# "\x00\x00\x00" = 0
+0x006e3f	Band Plan US4 Start				# "\x00\x00\x00" = 0
+0x006e40	Band Plan US4 End				# "\x00\x00\x00" = 0
+0x006e47	Band Plan DS1 Start				# "\x00\x00\x21" = 33
+0x006e48	Band Plan DS1 End				# "\x00\x03\x5b" = 859
+0x006e49	Band Plan DS2 Start				# "\x00\x04\xc0" = 1216
+0x006e4a	Band Plan DS2 End				# "\x00\x07\xa9" = 1961
+0x006e4b	Band Plan DS3 Start				# "\x00\x0a\xf0" = 2800
+0x006e4c	Band Plan DS3 End				# "\x00\x0f\x7f" = 3967
+0x006e4d	Band Plan DS4 Start				# "\x00\x00\x00" = 0
+0x006e4e	Band Plan DS4 End				# "\x00\x00\x00" = 0
 
 # Hlog: SCStatusSegmentLog of Line 1 (DS = Downstream aka CPE ingress)
 #  * max is -6.0 dB (0x000)
 #  * min is -96.3 dB (0x3ff)
 #  * inc in -0.1 dB
+#
+# ranges look to be tied to 8Hz buckets over the DS Band Plan
 0x007471	Tone dB (9-16) [?]				# "\x00\x03\xff"
 0x007472	Tone dB (17-24) [?]				# "\x00\x03\xff"
 0x007473	Tone dB (25-32) [?]				# "\x00\x03\xff"
 0x007474	Tone dB (33-40) [?]				# "\x00\x03\xff"
 0x007475	Tone dB (41-48)					# "\x00\x00\xf5" = -18.5
 0x007476	Tone dB (49-56)					# "\x00\x00\xdb" = -15.9
+#[snipped]
+0x0074b0	Tone dB (857-864)				# "\x00\x01\x56" = -36.6
 #[snipped]
 0x0076ff	Tone dB (3953-3960)				# "\x00\x03\x1c" = -73.6
 0x007660	Tone dB (3961-3968)				# "\x00\x03\x1a" = -73.4
@@ -341,7 +380,16 @@
 0x007670	Tone dB (4089-4096) [?]				# "\x00\x03\xff"
 
 # QLN: SCStatusSegmentQln of Line 1
-????
+#????
+
+# SNR: SCStatusSegmentSnr of Line 1
+#????
+
+# Bitsalloc: SCStatusSegmentBitsAlloc of Line 1
+#????
+
+# Gainalloc: SCStatusSegmentGainAlloc of Line 1
+#????
 
 # [Frame 2579]
 
@@ -354,27 +402,10 @@
 0x007000	Line Attenuation (DS)				# "\x00\x01\x03" = 259 (0.1 dB) => 25.9 dB
 0x006d35	Link Time					# "\x00\x00\x27" = 39 (seconds)
 
-# [Frame 2585]
+# [Frame 2623]
 
-# Band Plan (interleaves US0:DS0:US1:DS1:...)
-0x006e37	Band Plan US0 Start				# "\x00\x00\x07" = 7
-0x006e38	Band Plan US0 End				# "\x00\x00\x20" = 32
-0x006e39	Band Plan US1 Start				# "\x00\x03\x67" = 871
-0x006e3a	Band Plan US1 End				# "\x00\x04\xb5" = 1205
-0x006e3b	Band Plan US2 Start				# "\x00\x00\x00" = 0
-0x006e3c	Band Plan US2 End				# "\x00\x00\x00" = 0
-0x006e3d	Band Plan US3 Start				# "\x00\x00\x00" = 0
-0x006e3e	Band Plan US3 End				# "\x00\x00\x00" = 0
-0x006e3f	Band Plan US4 Start				# "\x00\x00\x00" = 0
-0x006e40	Band Plan US4 End				# "\x00\x00\x00" = 0
-0x006e47	Band Plan DS0 Start				# "\x00\x00\x21" = 33    [DS1 in Dump SoC]
-0x006e48	Band Plan DS0 End				# "\x00\x03\x5b" = 859   [DS1 in Dump SoC]
-0x006e49	Band Plan DS1 Start				# "\x00\x04\xc0" = 1216  [DS2 in Dump SoC]
-0x006e4a	Band Plan DS1 End				# "\x00\x07\xa9" = 1961  [DS2 in Dump SoC]
-0x006e4b	Band Plan DS2 Start				# "\x00\x0a\xf0" = 2800  [DS3 in Dump SoC]
-0x006e4c	Band Plan DS2 End				# "\x00\x0f\x7f" = 3967  [DS3 in Dump SoC]
-0x006e4d	Band Plan DS3 Start				# "\x00\x00\x00" = 0     [DS4 in Dump SoC]
-0x006e4e	Band Plan DS3 End				# "\x00\x00\x00" = 0     [DS4 in Dump SoC]
+# Status (Advance) of Line 1
+
 
 ####
 
