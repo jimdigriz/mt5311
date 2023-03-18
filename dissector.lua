@@ -318,7 +318,7 @@ function proto.dissector (tvb, pinfo, tree)
 		end
 	end
 
-	payload_tree:append_text(" [" .. tostring(records) .. " record(s)]", i)
+	payload_tree:append_text(" [" .. tostring(records) .. " record(s)]")
 
 	return len
 end
