@@ -265,8 +265,6 @@ function proto.dissector (tvb, pinfo, tree)
 				break
 			end
 		end
-
-		payload_tree:append_text(" [" .. tostring(records) .. " record(s)]", i)
 	else
 		--  0                   1                   2                   3
 		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -318,9 +316,9 @@ function proto.dissector (tvb, pinfo, tree)
 				table.insert(requests[seq]["cmds"], { pi_tvb(0, 1):uint(), pi_tvb(1, 3):uint(), pi_tvb(4, 2):uint() })
 			end
 		end
-
-		payload_tree:append_text(" [" .. tostring(records) .. " record(s)]", i)
 	end
+
+	payload_tree:append_text(" [" .. tostring(records) .. " record(s)]", i)
 
 	return len
 end
