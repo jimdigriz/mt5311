@@ -354,6 +354,7 @@
 #  * max is -6.0 dB (0x000)
 #  * min is -96.3 dB (0x3ff)
 #  * inc in -0.1 dB
+# Format is as xdsl2SCStatusSegmentLog described in RFC 5650, section 2.6
 0x007471	Hlog (carriers 1-8)						# "\x00\x03\xff"
 0x007472	Hlog (carriers 9-16)						# "\x00\x03\xff"
 0x007473	Hlog (carriers 17-24)						# "\x00\x03\xff"
@@ -873,6 +874,7 @@
 #  * max is -23.0 dB (0x00)
 #  * min is -151.0 dB (0xff)
 #  * inc in -0.5 dB
+# Format is as xdsl2SCStatusSegmentQln described in RFC 5650, section 2.6
 0x007671	QLN (carriers 1-8, 9-16 and 17-24)				# "\xff\xff\xff"
 0x007672	QLN (carriers 25-32, 33-40 and 41-48)				# "\xff\xd3\xca" = NA, -128.5, -124.0 dBm/Hz
 0x007673	QLN (carriers 49-56, 57-64 and 65-72)				# "\xc6\xc1\xbd" = -122.0, -119.5, -117.5 dBm/Hz
@@ -1051,7 +1053,7 @@
 #  * max is 96.0 dB (0x00)
 #  * min is -32.0 dB (0xff)
 #  * inc in -0.5 dB
-#  * 0.0 and -32.0 seem to have a special meaning that eludes me
+# Format is as xdsl2SCStatusSegmentSnr described in RFC 5650, section 2.6
 0x00771c	SNR (carriers 1-8, 9-16 and 17-24)				# "\xff\xff\xff"
 0x00771d	SNR (carriers 25-32, 33-40 and 41-48)				# "\xff\x8c\x88" = NA, 38.0, 36.0 dB
 0x00771e	SNR (carriers 49-56, 57-64 and 65-72)				# "\x92\x99\x9d" = 41.0, 44.5, 46.5 dB
