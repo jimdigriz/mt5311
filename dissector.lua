@@ -226,6 +226,7 @@ function proto.dissector (tvb, pinfo, tree)
 
 	local pi, pi_tvb
 	local offset = 0
+	local records = 0
 	if response then
 		--  0                   1                   2                   3
 		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -242,6 +243,8 @@ function proto.dissector (tvb, pinfo, tree)
 
 		local cmds = requests[seq]["cmds"]
 		for i, cmd in pairs(cmds) do
+			records = records + 1
+
 			if offset >= payload_len then
 				payload_tree:add_proto_expert_info(proto.experts.assert, "Truncated Response")
 				break
@@ -262,6 +265,8 @@ function proto.dissector (tvb, pinfo, tree)
 				break
 			end
 		end
+
+		payload_tree:append_text(" [" .. tostring(records) .. " record(s)]", i)
 	else
 		--  0                   1                   2                   3
 		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -285,6 +290,8 @@ function proto.dissector (tvb, pinfo, tree)
 		--    set to two (2) indicating write.
 
 		while offset < payload_len do
+			records = records + 1
+
 			if offset >= payload_len then
 				payload_tree:add_proto_expert_info(proto.experts.assert, "Truncated Request")
 				break
@@ -311,6 +318,8 @@ function proto.dissector (tvb, pinfo, tree)
 				table.insert(requests[seq]["cmds"], { pi_tvb(0, 1):uint(), pi_tvb(1, 3):uint(), pi_tvb(4, 2):uint() })
 			end
 		end
+
+		payload_tree:append_text(" [" .. tostring(records) .. " record(s)]", i)
 	end
 
 	return len
