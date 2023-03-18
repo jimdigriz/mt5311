@@ -237,7 +237,7 @@ function proto.dissector (tvb, pinfo, tree)
 		--
 		--    Length comes from request
 		--
-		--    Note: only ever seen three (3) octets
+		--    Note: only observed three (3) octets
 		--
 
 		local cmds = requests[seq]["cmds"]
@@ -281,7 +281,8 @@ function proto.dissector (tvb, pinfo, tree)
 		--
 		-- Value
 		--
-		--    Only present when mode is two (2) [write]
+		--    The Value field is three octets, and is present only when M is
+		--    set to two (2) indicating write.
 
 		while offset < payload_len do
 			if offset >= payload_len then
