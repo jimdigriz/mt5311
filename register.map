@@ -290,7 +290,7 @@
 0x007005	xdsl2ChStatusPrevDataRate0 (US)					# 6669 (kbps)
 0x007021	xdsl2ChStatusPrevDataRate2 (DS)					# 43218 (kbps)
 0x006f2f	xdsl2LineStatusElectricalLength					# 186 (metres)
-0x006f26	xdsl2LineStatusActProfile					# 64 => somehow turns into '17a'
+0x006f26	xdsl2LineStatusActProfile					# "\x00\x00\x40" = 17a (RFC5650 Xdsl2LineProfiles?)
 0x000028	AdslFlag							# 0
 0x002a74	xdslGhsRtStdG993_2_G993_5					# 3
 0x007da2	xdslGhsRtStdG993_2_NPar2					# 566
@@ -1227,14 +1227,13 @@
 0x0077c6	SNR (carriers 4081-4088, 4089-4096)				# "\xff\xff\x00"
 
 # Bitsalloc: SCStatusSegmentBitsAlloc of Line 172
-#????
+# Frames ????
 
 # Gainalloc: SCStatusSegmentGainAlloc of Line 1
 #????
 
-# [Frame 2579]
-
 # Status
+# Frames 3847 - 3852
 0x006ffe	SNR Margin (US)							# "\x00\x00\x3c" = 60 (0.1 dB) => 6.0 dB
 0x007002	SNR Margin (DS)							# "\x00\x00\x21" = 33 (0.1 dB) => 3.3 dB
 0x006ffd	Signal Attenuation (US)						# "\x7f\xff\xfe" = NA (0.1 dB)
@@ -1243,10 +1242,106 @@
 0x007000	Line Attenuation (DS)						# "\x00\x01\x03" = 259 (0.1 dB) => 25.9 dB
 0x006d35	Link Time							# "\x00\x00\x27" = 39 (seconds)
 
-# [Frame 2623]
-
 # Status (Advance) of Line 1
-
+# Frames 3895 - 4098
+0x007006	Actual delay (US)						# "\x00\x00\x00" = 0 ms
+0x007022	Actual delay (DS)						# "\x00\x00\x00" = 0 ms
+0x007007	Actual INP (US)							# "\x00\x00\x00" = 0 (0.1 symbols)
+0x007023	Actual INP (DS)							# "\x00\x00\x00" = 0 (0.1 symbols)
+0x007f87	Previous Ndr Data Rate (US)					# "\x00\x1a\x0d" = 6669 (Kbps)
+0x007f9d	Previous Ndr Data Rate (DS)					# "\x00\xae\x45" = 44513 (Kbps)
+0x006f25	Transmit Power (US)						# "\xff\xff\xe3" = 16777187 (0.1 dBm)
+0x006f24	Transmit Power (DS)						# "\x00\x00\x80" = 128 (0.1 dBm) => 12.8 dB
+0x006fd3	Trellis (US)							# "\x00\x00\x01" = 1
+0x006fd2	Trellis (DS)							# "\x00\x00\x01" = 1
+0x00700c	Interleaving Depth (US)						# "\x00\x00\x01" = 1
+0x007028	Interleaving Depth (DS)						# "\x00\x00\x01" = 1
+0x00700d	Interleaving Block (US)						# "\x00\x00\x5c" = 92
+0x007029	Interleaving Block (DS)						# "\x00\x00\xff" = 255
+0x006fda	SNR Margin US0							# "\x00\x00\x3b" = 59 (0.1 dB) => 5.9 dB
+0x006fde	SNR Margin US1							# "\x00\x00\x3b" = 59 (0.1 dB) => 5.9 dB
+0x006fee	SNR Margin DS1							# "\x00\x00\x21" = 33 (0.1 dB) => 3.3 dB
+0x006fe2	SNR Margin US2							# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff2	SNR Margin DS2							# "\x00\x00\x22" = 34 (0.1 dB) => 3.4 dB
+0x006fe6	SNR Margin US3							# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff6	SNR Margin DS3							# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006fea	SNR Margin US4							# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ffa	SNR Margin DS4							# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006fd0	Signal Attenuation US0						# "\x00\x00\x39" = 57 (0.1 dB) => 5.7 dB
+0x006fdd	Signal Attenuation US1						# "\x00\x01\x77" = 375 (0.1 dB) => 37.5 dB
+0x006fed	Signal Attenuation DS1						# "\x00\x00\xeb" = 235 (0.1 dB) => 23.5 dB
+0x006fe1	Signal Attenuation US2						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff1	Signal Attenuation DS2						# "\x00\x01\xf2" = 498 (0.1 dB) => 49.8 dB
+0x006fe5	Signal Attenuation US3						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff5	Signal Attenuation DS3						# "\x00\x00\x00" = 0 (0.1 dB) => 0 dB
+0x006fe9	Signal Attenuation US4						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff9	Signal Attenuation DS4						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006fd8	Line Attenuation US0						# "\x00\x00\x39" = 57 (0.1 dB) => 5.7 dB
+0x006fdc	Line Attenuation US1						# "\x00\x01\x73" = 371 (0.1 dB) => 37.1 dB
+0x006fec	Line Attenuation DS1						# "\x00\x00\xcf" = 207 (0.1 dB) => 20.7 dB
+0x006fe0	Line Attenuation US2						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff0	Line Attenuation DS2						# "\x00\x01\xe9" = 489 (0.1 dB) => 48.9 dB
+0x006fe4	Line Attenuation US3						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff4	Line Attenuation DS3						# "\x00\x02\xcf" = 719 (0.1 dB) => 71.9 dB
+0x006fe8	Line Attenuation US4						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x006ff8	Line Attenuation DS4						# "\x7f\xff\xfe" = NA (0.1 dB)
+0x007f09	Showtime CV							# "\x00\x00\x00" = 0
+0x007f08	Showtime FEC							# "\x00\x00\x00" = 0
+0x007f0a	Showtime Fecs							# "\x00\x00\x00" = 0
+0x007f0b	Showtime Es							# "\x00\x00\x00" = 0
+0x007f0c	Showtime Ses							# "\x00\x00\x00" = 0
+0x007f0d	Showtime Loss							# "\x00\x00\x00" = 0
+0x007f0e	Showtime Uas							# "\x00\x00\x00" = 0
+0x007c1f	15M Elapsed time (US)						# "\x00\x02\xfd" = 765 secs
+0x007c30	15M Elapsed time (DS)						# "\x00\x02\xfd" = 765 secs
+0x007c20	15M FECS (US)							# "\x00\x00\x01" = 1
+0x007c31	15M FECS (DS)							# "\x00\x02\x49" = 585
+0x007c21	15M ES (US)							# "\x00\x00\x00" = 0
+0x007c32	15M ED (DS)							# "\x00\x00\x0d" = 13
+0x007c22	15M SES (US)							# "\x00\x00\x00" = 0
+0x007c33	15M SES (DS)							# "\x00\x00\x00" = 0
+0x007c23	15M LOSS (US)							# "\x00\x00\x00" = 0
+0x007c34	15M LOSS (DS)							# "\x00\x00\x00" = 0
+0x007c24	15M UAS (US)							# "\x00\x00\x00" = 0
+0x007c35	15M UAS (DS)							# "\x00\x00\xa3" = 163
+0x007c41	15M Full Inits (US)						# "\x00\x00\x00" = 0
+0x007c4f	15M Full Inits (DS)						# "\x00\x00\x04" = 4
+0x007c9e	15M CV (US)							# "\x00\x00\x00" = 0
+0x007cb4	15M CV (DS)							# "\x00\x00\x29" = 41
+0x007c9f	15M FEC (US)							# "\x00\x00\x02" = 2
+0x007cb5	15M FEC (DS)							# "\x01\x66\xb4" = 91828
+0x007c27	1Day Elapsed time (US)						# "\x01\x49\xf1" = 84465 secs
+0x007c38	1Day Elapsed time (DS)						# "\x01\x49\xf1" = 84465 secs
+0x007c28	1Day FECS (US)							# "\x00\x00\xa1" = 161
+0x007c39	1Day FECS (DS)							# "\x01\x03\xcc" = 66508
+0x007c29	1Day ES (US)							# "\x00\x00\x53" = 83
+0x007c3a	1Day ES (DS)							# "\x01\x01\x83" = 387
+0x007c2a	1Day SES (US)							# "\x00\x00\x00" = 0
+0x007c3b	1Day SES (DS)							# "\x01\x00\x0e" = 14
+0x007c2b	1Day LOSS (US)							# "\x00\x00\x00" = 0
+0x007c3c	1Day LOSS (DS)							# "\xff\xff\xf7" = 16777207
+0x007c2c	1Day UAS (US)							# "\x00\x00\x00" = 0
+0x007c3d	1Day UAS (DS)							# "\x00\x00\xfe" = 254
+0x007c48	1Day Full Inits (US)						# "\x00\x00\x00" = 0
+0x007c56	1Day Full Inits (DS)						# "\x00\x00\x06" = 6
+0x007ca3	1Day CV (US)							# "\x00\x00\x66" = 102
+0x007cb9	1Day CV (DS)							# "\x00\x04\xef" = 1263
+0x007ca4	1Day FEC (US)							# "\x00\x02\x02" = 514
+0x007cba	1Day FEC (DS)							# "\x23\xe3\xd6" = 2352086
+0x007ee2	Total FECS (US)							# "\x03\xa3\x67" = 238439
+0x007f00	Total FECS (DS)							# "\x00\x00\x00" = 0
+0x007ee3	Total ES (US)							# "\x01\x18\x60" = 71776
+0x007f01	Total ES (DS)							# "\x00\x00\x00" = 0
+0x007ee4	Total SES (US)							# "\x00\x03\xa7" = 935
+0x007f02	Total SES (DS)							# "\x00\x00\x00" = 0
+0x007ee5	Total LOSS (US)							# "\x00\x00\x25" = 37
+0x007f03	Total LOSS (DS)							# "\x00\x00\x00" = 0
+0x007ee6	Total UAS (US)							# "\x01\x50\xeb" = 86251
+0x007f04	Total UAS (DS)							# "\x00\x00\x00" = 0
+0x007ee1	Total CV (US)							# "\x01\x8e\xd8" = 102104
+0x007eff	Total CV (DS)							# "\x01\x5a\x2d" = 88621
+0x007ee0	Total FEC (US)							# "\x16\x33\x85" = 1454981
+0x007ef3	Total FEC (DS)							# "\x15\x3a\x07" = 1391111
 
 ####
 
@@ -1258,7 +1353,7 @@
 0x006c32	Firmware Date (DDMMYY)						# "\x09\x07\x18" = 090718 (might be US format!)
 0x006c33	Firmware Time (HHMMSS)",					# "\x17\x30\x44" = 173044
 0x006c34									# "\x80\x15\x68"
-0x006c35	PhyStatus(?)							# "\x00\x01\x29" => v & 0x00ff00 => 0 -> 2, 1 -> 3, 2 -> 4, 3 -> 5
+0x006c35	PhyStatus(?)							# "\x00\x01\x29" => v & 0x00ff00 => 0 -> 2, 1 -> 3, 2 -> 4, 3 -> 5 (showtime?)
 0x006c36									# "\x47\x41\x54"
 
 0x006f00	Bootcode Version						# "\xff\x00\x03" = ff0003
