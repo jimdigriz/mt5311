@@ -21,7 +21,7 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
 
 To use a basic Ethernet Boot & Management (EBM) protocol dissector:
 
-    sudo tcpdump -n -i eth0.100 'ether proto 0x6120' -w - -U | tee dump.pcap | tcpdump -r - -n -v
+    sudo tcpdump -n -i eth0 'ether proto 0x6120' -w - -U | tee dump.pcap | tcpdump -r - -n -v
     wireshark -X lua_script:dissector.lua dump.pcap
 
 **N.B.** [`dissector.lua`](./dissector.lua) contains my notes on the protocol
