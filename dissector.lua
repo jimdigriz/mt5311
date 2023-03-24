@@ -188,7 +188,9 @@ function proto.dissector (tvb, pinfo, tree)
 	hdr_tree:add(proto.fields.hdr_seq, hdr_tvb(3, 4))
 	local seq = f_seq()()
 	if pinfo.visited then
-		hdr_tree:add(proto.fields[response and "frame_request" or "frame_response"], requests[seq][not response]):set_generated()
+		if requests[seq][not response] ~= nil then
+			hdr_tree:add(proto.fields[response and "frame_request" or "frame_response"], requests[seq][not response]):set_generated()
+		end
 	else
 		if not requests[seq] then requests[seq] = { ["cmds"] = {} } end
 		requests[seq][response] = pinfo.number
