@@ -36,12 +36,69 @@ It looks like the "Dump SOC" starts at (roughly) frame number 409 with the value
 
 ## SNMP
 
-An [SNMP frontend](http://www.net-snmp.org/) is planned...
+**N.B.** WORK IN PROGRESS, NOT COMPLETE, NOT USABLE
+
+An extension to [Net-SNMP](http://www.net-snmp.org/) in the form of a [MIB-Specific Extension using `pass_persist`](http://www.net-snmp.org/docs/man/snmpd.conf.html#lbBB).
+
+Where possible the following MIBs are supported:
 
  * [RFC 5650](https://datatracker.ietf.org/doc/html/rfc5650) - Definitions of Managed Objects for Very High Speed Digital Subscriber Line 2 (VDSL2)
  * [RFC 3728](https://datatracker.ietf.org/doc/html/rfc3728) - Definitions of Managed Objects for Very High Speed Digital Subscriber Lines (VDSL)
     * [RFC 4070](https://datatracker.ietf.org/doc/html/rfc4070) - Definitions of Managed Object Extensions for Very High Speed Digital Subscriber Lines (VDSL) Using Multiple Carrier Modulation (MCM) Line Coding
  * [RFC 2662](https://www.rfc-editor.org/rfc/rfc2662) - Definitions of Managed Objects for the ADSL Lines
+
+To set up your OS, run:
+
+ * **Debian (and probably Ubuntu):**
+
+       sudo apt install --no-install-recommends snmpd lua5.1
+
+   If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET support)](https://github.com/luaposix/luaposix/releases/tag/v35.1) then you may run:
+
+       sudo apt install --no-install-recommends lua-posix
+
+   Otherwise you will need to run:
+
+       sudo apt install --no-install-recommends liblua5.1-dev luarocks
+       sudo luarocks install luaposix
+
+ * **OpenWRT:**
+
+       opkg install snmpd lua lua-posix
+
+   **N.B.** consider yourselves lucky, I normally would have written this SNMP extension in Perl, but as this is likely to be useful to the OpenWRT community I have purposely targeted easy to meet and low disk space usage dependencies (including supporting Lua 5.1)
+
+Now run:
+
+    mkdir -p /opt/mt5311
+    cd /opt/mt5311
+    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp.lua
+    # alternatively use 'luarocks install luastruct'
+    wget https://raw.githubusercontent.com/iryont/lua-struct/master/src/struct.lua
+
+Now configure `snmpd` to use the Lua script by doing the following but replacing `IFACE` with the name of the interface the VDSL2 SFP is connected to, and `MACADDR` with the MAC address of the VDSL2 SFP:
+
+ * **Debian/ (and probably Ubuntu):**
+
+    1. create the file `/etc/sudoers.d/snmp` and add the following line:
+
+           Debian-snmp ALL=(ALL) NOPASSWD:/usr/bin/lua /opt/mt5311/snmp.lua
+
+    1. edit `/etc/snmp/snmpd.conf` and add the following line:
+
+           pass_persist .1.3.6.1.4.1.59084.6969 sudo /usr/bin/lua /opt/mt5311/snmp.lua IFACE MACADDR
+
+ * **OpenWRT:**
+
+    1. edit `/etc/snmp/snmpd.conf` and add the following line:
+
+           pass_persist .1.3.6.1.4.1.59084.6969 /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR
+
+If `snmpd` does not run as `root` (eg. Debian) then you will need to use instead:
+
+    pass_persist .1.3.6.1.4.1.59084.6969 sudo /usr/bin/env lua /opt/mt5311/snmp.lua
+
+
 
 ## Official
 
