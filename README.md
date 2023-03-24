@@ -14,6 +14,7 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
     * Forums:
        * [User experience - ALLNET ALL4781-VDSL2-SFP / Switch Modul (Mini-GBIC), VDSL2](https://forum.turris.cz/t/user-experience-allnet-all4781-vdsl2-sfp-switch-modul-mini-gbic-vdsl2/)
        * [Proscend 180-t vdsl2 SFP Support](https://forum.netgate.com/topic/165393/proscend-180-t-vdsl2-sfp-support/)
+    * [Dumping the EEPROM](https://github.com/TheSkorm/Proscend--180-T/wiki)
 
 # Utilities
 
