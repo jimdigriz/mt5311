@@ -17,23 +17,6 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
 
 # Utilities
 
-## Wireshark
-
-To use a basic Ethernet Boot & Management (EBM) protocol dissector:
-
-    sudo tcpdump -n -i eth0 'ether proto 0x6120' -w - -U | tee dump.pcap | tcpdump -r - -n -v
-    wireshark -X lua_script:dissector.lua dump.pcap
-
-**N.B.** [`dissector.lua`](./dissector.lua) contains my notes on the protocol
-
-### Sample Data
-
-[`dump-soc.txt.gz`](./dump-soc.txt.gz) is the output of the "Dump SOC" button whilst [`dump-soc.pcap.gz`](./dump-soc.pcap.gz) is a packet capture during running it.
-
-**N.B** packet capture includes connecting to the SFP and having 'Port Status' section open and running for a while
-
-It looks like the "Dump SOC" starts at (roughly) frame number 409 with the value of `xdslTwConfig` being in frame 426.
-
 ## SNMP
 
 **N.B.** WORK IN PROGRESS, NOT COMPLETE, NOT USABLE
@@ -113,6 +96,23 @@ Now configure `snmpd` to use the Lua script by doing the following (remember to 
     1. edit `/etc/snmp/snmpd.conf` and add the following line:
 
            pass_persist .1.3.6.1.4.1.59084.6969 /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR
+
+## Wireshark
+
+To use a basic Ethernet Boot & Management (EBM) protocol dissector:
+
+    sudo tcpdump -n -i eth0 'ether proto 0x6120' -w - -U | tee dump.pcap | tcpdump -r - -n -v
+    wireshark -X lua_script:dissector.lua dump.pcap
+
+**N.B.** [`dissector.lua`](./dissector.lua) contains my notes on the protocol
+
+### Sample Data
+
+[`dump-soc.txt.gz`](./dump-soc.txt.gz) is the output of the "Dump SOC" button whilst [`dump-soc.pcap.gz`](./dump-soc.pcap.gz) is a packet capture during running it.
+
+**N.B** packet capture includes connecting to the SFP and having 'Port Status' section open and running for a while
+
+It looks like the "Dump SOC" starts at (roughly) frame number 409 with the value of `xdslTwConfig` being in frame 426.
 
 ## Official
 
