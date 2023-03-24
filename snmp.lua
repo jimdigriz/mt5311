@@ -11,6 +11,9 @@ end
 
 local PROTO = 0x6120
 local MAXSIZE = 300
+local REG = {
+	linktime	= 0x006d35
+}
 
 -- https://stackoverflow.com/a/23596380
 local little_endian = string.dump(function() end):byte(7) == 1
@@ -57,9 +60,6 @@ assert(socket.bind(fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(i
 -- FIXME do handshake with SFP (port 1-4?)
 
 local seq = 1
-local REG = {
-	linktime=0x006d35
-}
 
 local function send (t)
 	-- Ethernet: [dst (6 bytes)][src (6 bytes)][proto (2 bytes)]
