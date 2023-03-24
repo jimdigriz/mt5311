@@ -76,7 +76,21 @@ Now run:
     # alternatively use 'luarocks install luastruct'
     wget https://raw.githubusercontent.com/iryont/lua-struct/master/src/struct.lua
 
-Now configure `snmpd` to use the Lua script by doing the following but replacing `IFACE` with the name of the interface the VDSL2 SFP is connected to, and `MACADDR` with the MAC address of the VDSL2 SFP:
+Check the tool is working by running it as `root` as:
+
+    /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR -g .1.3.6.1.4.1.59084.6969.1
+
+It should output almost immediately:
+
+    ...
+
+Where:
+
+ * **`IFACE`:** name of the host network interface the VDSL2 SFP is connected to
+    * this must be an untagged (native) interface to the SFP
+ * **`MACADDR`:** MAC address of the VDSL2 SFP
+
+Now configure `snmpd` to use the Lua script by doing the following (remember to replace `IFACE` and `MACADDR`):
 
  * **Debian/ (and probably Ubuntu):**
 
