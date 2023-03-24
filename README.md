@@ -53,7 +53,7 @@ To set up your OS, run:
 
        sudo apt install --no-install-recommends snmpd lua5.1
 
-   If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET support)](https://github.com/luaposix/luaposix/releases/tag/v35.1) then you may run:
+   If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET` support)](https://github.com/luaposix/luaposix/releases/tag/v35.1) then you may run:
 
        sudo apt install --no-install-recommends lua-posix
 
@@ -66,7 +66,7 @@ To set up your OS, run:
 
        opkg install snmpd lua lua-posix
 
-   **N.B.** consider yourselves lucky, I normally would have written this SNMP extension in Perl, but as this is likely to be useful to the OpenWRT community I have purposely targeted easy to meet and low disk space usage dependencies (including supporting Lua 5.1)
+   **N.B.** consider yourselves lucky, I normally would have written this all in Perl, but as this is likely to be useful to the OpenWRT community I have purposely targeted easy to meet and low disk space usage dependencies (including supporting Lua 5.1)
 
 Now run:
 
