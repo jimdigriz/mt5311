@@ -51,7 +51,7 @@ To set up your OS, run:
 
  * **Debian (and probably Ubuntu):**
 
-       sudo apt install --no-install-recommends snmpd lua5.1
+       sudo apt install --no-install-recommends lua5.1 snmpd sudo
 
    If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET` support)](https://github.com/luaposix/luaposix/releases/tag/v35.1) then you may run:
 
@@ -59,12 +59,12 @@ To set up your OS, run:
 
    Otherwise you will need to run:
 
-       sudo apt install --no-install-recommends liblua5.1-dev luarocks
+       sudo apt install --no-install-recommends build-essential liblua5.1-dev luarocks
        sudo luarocks install luaposix
 
  * **OpenWRT:**
 
-       opkg install snmpd lua lua-posix
+       opkg install lua lua-posix snmpd
 
    **N.B.** consider yourselves lucky, I normally would have written this all in Perl, but as this is likely to be useful to the OpenWRT community I have purposely targeted easy to meet and low disk space usage dependencies (including supporting Lua 5.1)
 
@@ -97,7 +97,7 @@ Now configure `snmpd` to use the Lua script by doing the following (remember to 
 
  * **Debian/ (and probably Ubuntu):**
 
-    1. create the file `/etc/sudoers.d/snmp` and add the following line:
+    1. create the file `/etc/sudoers.d/snmpd` and add the following line:
 
            Debian-snmp ALL=(ALL) NOPASSWD:/usr/bin/lua /opt/mt5311/snmp.lua
 
