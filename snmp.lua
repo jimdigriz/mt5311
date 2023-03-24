@@ -10,7 +10,7 @@ if not status then
 end
 
 local PROTO = 0x6120
-local MAXSIZE = 300
+local MAXSIZE = 1500 - 14
 local REG = {
 	linktime	= 0x006d35
 }
