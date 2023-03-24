@@ -9,32 +9,28 @@ if not status then
 	struct = assert(loadfile(arg[0]:match("^(.-/?)[^/]+.lua$") .. "struct.lua"))
 end
 
--- integer, gauge, counter, timeticks, ipaddress, objectid, or string
-local function do_get(oid)
-	io.stdout:write("NONE\n")
+local PROTO = 0x6120
+local MAXSIZE = 300
+
+-- https://stackoverflow.com/a/23596380
+local little_endian = string.dump(function() end):byte(7) == 1
+
+local function htons (v)
+	if little_endian then
+		v = struct.unpack("H", struct.pack(">H", v))
+	end
+	return v
 end
 
--- integer, gauge, counter, timeticks, ipaddress, objectid, or string
-local function do_getnext(oid)
-	io.stdout:write("NONE\n")
-end
-
--- not-writable, wrong-type, wrong-length, wrong-value or inconsistent-value
-local function do_set(oid, type, value)
-	io.stdout:write("not-writable\n")
-end
-
-local function macaddr2bytes (macaddr)
-	local macaddr = {macaddr:lower():match("^(%x%x)" .. string.rep("[:-]?(%x%x)", 5) .. "$")}
+local function macaddr2bytes (v)
+	local macaddr = {v:lower():match("^(%x%x)" .. string.rep("[:-]?(%x%x)", 5) .. "$")}
 	if #macaddr ~= 6 then
-		io.stderr:write("invalid MAC address\n")
-		os.exit(1)
+		error("invalid MAC address '" .. v .. "'")
 	end
 	for i, v in ipairs(macaddr) do
-		macaddr[i] = string.char(tonumber("0x" .. v))
+		macaddr[i] = string.char(tonumber(v, 16))
 	end
 	macaddr = table.concat(macaddr, "")
-	assert(#macaddr == 6)
 	return macaddr
 end
 
@@ -54,20 +50,57 @@ local iface_macaddr = macaddr2bytes(iface_macaddr_f:read())
 iface_macaddr_f:close()
 
 local macaddr = macaddr2bytes(arg[2])
-local proto = "\097\032"	-- 0x6120
-
--- https://stackoverflow.com/a/23596380
-local little_endian = string.dump(function() end):byte(7) == 1
 
 -- luaposix does not support AF_PACKET/SOCK_DGRAM :(
-local fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, little_endian and 0x2061 or 0x6120))
+local fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(0x6120)))
 assert(socket.bind(fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(iface)}))
--- pkt = socket.recv(fd, 1000)
--- remember to filter on dst (our) macaddr as someone may have the NIC set to promisc
--- print(pkt)
-pkt = macaddr .. iface_macaddr .. proto .. "1111"
-assert(socket.send(fd, pkt) == pkt:len())
-require "posix.unistd".close(fd)
+
+local seq = 1
+local REG = {
+	linktime=0x006d35
+}
+
+local function send (t)
+	-- Ethernet: [dst (6 bytes)][src (6 bytes)][proto (2 bytes)]
+	local pkt = struct.pack(">c0c0H", macaddr, iface_macaddr, PROTO)
+
+	-- Request Payload: [type (1 byte)][reg (3 bytes)[reglen (2 bytes)]
+	local payload = struct.pack(">Bc0H", 1, struct.pack(">I", t.reg):sub(2), 3)
+
+	-- Request Header: [payload len (2 bytes)][flags (1 byte)][seq (4 bytes)][status (1 byte)]
+	pkt = pkt .. struct.pack(">HBIB", payload:len(), tonumber("00000001", 2), seq, 255) .. payload
+
+	-- Padding
+	pkt = pkt .. string.rep("\0", math.max(0, 64 - pkt:len()))
+
+	assert(socket.send(fd, pkt) == pkt:len())
+
+	seq = seq + 1
+end
+
+local function recv ()
+	local pkt = socket.recv(fd, MAXSIZE)
+	-- remember to filter on dst (our) macaddr as someone may have the NIC set to promisc
+	return pkt
+end
+
+send({reg=REG.linktime})
+print(recv())
+
+-- integer, gauge, counter, timeticks, ipaddress, objectid, or string
+local function do_get(oid)
+	io.stdout:write("NONE\n")
+end
+
+-- integer, gauge, counter, timeticks, ipaddress, objectid, or string
+local function do_getnext(oid)
+	io.stdout:write("NONE\n")
+end
+
+-- not-writable, wrong-type, wrong-length, wrong-value or inconsistent-value
+local function do_set(oid, type, value)
+	io.stdout:write("not-writable\n")
+end
 
 if arg[#arg - 1] == "-g" then
 	do_get(arg[#arg])
@@ -98,3 +131,5 @@ else
 		end
 	end
 end
+
+require "posix.unistd".close(fd)
