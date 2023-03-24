@@ -63,10 +63,10 @@ local REG = {
 
 local function send (t)
 	-- Ethernet: [dst (6 bytes)][src (6 bytes)][proto (2 bytes)]
-	local pkt = struct.pack(">c0c0H", macaddr, iface_macaddr, PROTO)
+	local pkt = struct.pack(">c6c6H", macaddr, iface_macaddr, PROTO)
 
 	-- Request Payload: [type (1 byte)][reg (3 bytes)[reglen (2 bytes)]
-	local payload = struct.pack(">Bc0H", 1, struct.pack(">I", t.reg):sub(2), 3)
+	local payload = struct.pack(">Bc3H", 1, struct.pack(">I", t.reg):sub(2), 3)
 
 	-- Request Header: [payload len (2 bytes)][flags (1 byte)][seq (4 bytes)][status (1 byte)]
 	pkt = pkt .. struct.pack(">HBIB", payload:len(), tonumber("00000001", 2), seq, 255) .. payload
