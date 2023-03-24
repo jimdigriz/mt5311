@@ -86,7 +86,7 @@ local function recv ()
 end
 
 send({reg=REG.linktime})
-print(recv())
+--print(recv())
 
 -- integer, gauge, counter, timeticks, ipaddress, objectid, or string
 local function do_get(oid)

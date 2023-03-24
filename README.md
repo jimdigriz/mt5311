@@ -99,17 +99,20 @@ Now configure `snmpd` to use the Lua script by doing the following (remember to 
 
     1. create the file `/etc/sudoers.d/snmpd` and add the following line:
 
-           Debian-snmp ALL=(ALL) NOPASSWD:/usr/bin/lua /opt/mt5311/snmp.lua
+           Cmnd_Alias MT5311SNMP = /usr/bin/lua /opt/mt5311/snmp.lua [a-zA-Z0-9][a-zA-Z0-9.]* [0-9a-fA-F][0-9a-fA-F\:-]*
+           Defaults!MT5311SNMP !requiretty, !lecture
+           Debian-snmp ALL = (root) NOPASSWD:NOEXEC: MT5311SNMP
 
     1. edit `/etc/snmp/snmpd.conf` and add the following line:
 
-           pass_persist .1.3.6.1.4.1.59084.6969 sudo /usr/bin/lua /opt/mt5311/snmp.lua IFACE MACADDR
+           view systemonly included .1.3.6.1.4.1.59084.6969
+           pass_persist .1.3.6.1.4.1.59084.6969 /usr/bin/sudo /usr/bin/lua /opt/mt5311/snmp.lua IFACE MACADDR
 
  * **OpenWRT:**
 
     1. edit `/etc/snmp/snmpd.conf` and add the following line:
 
-           pass_persist .1.3.6.1.4.1.59084.6969 lua /opt/mt5311/snmp.lua IFACE MACADDR
+           pass_persist .1.3.6.1.4.1.59084.6969 /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR
 
 ## Official
 
