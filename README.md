@@ -80,15 +80,17 @@ Check the tool is working by running it as `root` as:
 
     /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR -g .1.3.6.1.4.1.59084.6969.1
 
-It should output almost immediately:
-
-    ...
-
 Where:
 
  * **`IFACE`:** name of the host network interface the VDSL2 SFP is connected to
     * this must be an untagged (native) interface to the SFP
  * **`MACADDR`:** MAC address of the VDSL2 SFP
+
+It should output almost immediately:
+
+    ...
+
+**N.B.** `snmp.lua` also support the non-persist plain `pass` mode of operation which exists in this tool as it is useful for debugging, look to the SNMP manpage for more information on how to use it
 
 Now configure `snmpd` to use the Lua script by doing the following (remember to replace `IFACE` and `MACADDR`):
 
