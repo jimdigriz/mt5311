@@ -54,6 +54,7 @@ local macaddr = macaddr2bytes(arg[2])
 -- luaposix does not support AF_PACKET/SOCK_DGRAM :(
 local fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(0x6120)))
 assert(socket.bind(fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(iface)}))
+-- FIXME do handshake with SFP (port 1-4?)
 
 local seq = 1
 local REG = {
