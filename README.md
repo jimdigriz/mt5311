@@ -111,10 +111,6 @@ Now configure `snmpd` to use the Lua script by doing the following (remember to 
 
            pass_persist .1.3.6.1.4.1.59084.6969 lua /opt/mt5311/snmp.lua IFACE MACADDR
 
-If `snmpd` does not run as `root` (eg. Debian) then you will need to use instead:
-
-    pass_persist .1.3.6.1.4.1.59084.6969 sudo lua /opt/mt5311/snmp.lua
-
 ## Official
 
 You can see a [video of the official tools in use](https://youtu.be/fdCl3nxgEyA), but below explains how to use the tools.
