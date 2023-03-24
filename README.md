@@ -90,7 +90,7 @@ It should output almost immediately:
 
     ...
 
-**N.B.** `snmp.lua` also support the non-persist plain `pass` mode of operation which exists in this tool as it is useful for debugging, look to the SNMP manpage for more information on how to use it
+**N.B.** `snmp.lua` also supports the non-persist plain `pass` mode of operation which exists in this tool as it is useful for debugging, look to the SNMP manpage for more information on how to use it
 
 Now configure `snmpd` to use the Lua script by doing the following (remember to replace `IFACE` and `MACADDR`):
 
