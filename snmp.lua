@@ -56,7 +56,7 @@ iface_macaddr_f:close()
 local macaddr = macaddr2bytes(arg[2])
 local proto = "\097\032"	-- 0x6120
 
--- string.dump(function() end):byte(7)
+-- https://stackoverflow.com/a/23596380
 local little_endian = string.dump(function() end):byte(7) == 1
 
 -- luaposix does not support AF_PACKET/SOCK_DGRAM :(
