@@ -6,7 +6,7 @@ if socket.AF_PACKET == nil then error("AF_PACKET not available, did you install 
 -- https://github.com/iryont/lua-struct
 local status, struct = pcall(function () return require "struct" end)
 if not status then
-	struct = assert(loadfile(arg[0]:match("^(.-/?)[^/]+.lua$") .. "struct.lua"))
+	struct = assert(loadfile(arg[0]:match("^(.-/?)[^/]+.lua$") .. "struct.lua"))()
 end
 
 local PROTO = 0x6120
