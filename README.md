@@ -78,7 +78,7 @@ Now run:
 
 Check the tool is working by running it as `root` as:
 
-    /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR -g .1.3.6.1.4.1.59084.6969.1
+    lua /opt/mt5311/snmp.lua IFACE MACADDR -g .1.3.6.1.4.1.59084.6969.1
 
 Where:
 
@@ -109,13 +109,11 @@ Now configure `snmpd` to use the Lua script by doing the following (remember to 
 
     1. edit `/etc/snmp/snmpd.conf` and add the following line:
 
-           pass_persist .1.3.6.1.4.1.59084.6969 /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR
+           pass_persist .1.3.6.1.4.1.59084.6969 lua /opt/mt5311/snmp.lua IFACE MACADDR
 
 If `snmpd` does not run as `root` (eg. Debian) then you will need to use instead:
 
-    pass_persist .1.3.6.1.4.1.59084.6969 sudo /usr/bin/env lua /opt/mt5311/snmp.lua
-
-
+    pass_persist .1.3.6.1.4.1.59084.6969 sudo lua /opt/mt5311/snmp.lua
 
 ## Official
 
