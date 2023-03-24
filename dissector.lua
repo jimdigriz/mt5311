@@ -28,7 +28,7 @@ function read_register_map ()
 	local warn = function (msg)
 		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg .. ", ignoring")
 	end
-	for line in io.lines("register.map") do
+	for line in io.lines(__DIR__ .. __DIR_SEPARATOR__ .. "register.map") do
 		line_count = line_count + 1
 
 		line = line:gsub("#.*$", "")
@@ -310,6 +310,10 @@ function proto.dissector (tvb, pinfo, tree)
 				pi:add(proto.fields.cmd_read_val, pi_tvb(6, 3))
 			end
 
+			if pi_tvb(0, 1):uint() ~= 1 then
+				pi:add_proto_expert_info(proto.experts.assert, "Command Type expected to be 1")
+			end
+
 			if pi_tvb(4, 2):uint() ~= 3 then
 				pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
 			end
@@ -325,4 +329,12 @@ function proto.dissector (tvb, pinfo, tree)
 	return len
 end
 
+set_plugin_info({
+	version = "0.1",
+	author = "Alexander Clouter",
+	email = "alex@digriz.org.uk",
+	copyright = "Copyright (c) 2023, coreMem Limited.",
+	license = "AGPLv3 license",
+	repository = "https://github.com/jimdigriz/mt5311"
+})
 DissectorTable.get("ethertype"):add(0x6120, proto)
