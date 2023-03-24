@@ -82,9 +82,10 @@ Check the tool is working by running it as `root` as:
 
 Where:
 
- * **`IFACE`:** name of the host network interface the VDSL2 SFP is connected to
-    * this must be an untagged (native) interface to the SFP
+ * **`IFACE`:** name of the host network interface (for example `eth1`) the VDSL2 SFP is connected to
+    * this must be the untagged (native/non-VLANed) interface to the SFP
  * **`MACADDR`:** MAC address of the VDSL2 SFP
+    * case insensitive and accepts the formats `001122334455`, `00-11-22-33-44-55` and `00:11:22:33:44:55`
 
 It should output almost immediately:
 
