@@ -10,11 +10,6 @@ local vs_dir = {
 	[2]	= "Request"
 }
 
-local vs_class = {
-	[0]	= "Normal",
-	[3]	= "System"
-}
-
 local vs_mode = {
 	[1]	= "Read",
 	[2]	= "Write"
@@ -59,6 +54,15 @@ function read_register_map ()
 end
 read_register_map()
 
+local SEQ = {
+	HELLO_CLIENT		= 0x6c360000,
+	HELLO_SERVER		= 0x6c364556
+}
+local vs_seq = {
+	[SEQ.HELLO_CLIENT]	= "Handshake Client Hello",
+	[SEQ.HELLO_SERVER]	= "Handshake Server Hello"
+}
+
 local vs_status = {
 	[0] = "Success",
 	[255] = "No error"
@@ -70,12 +74,11 @@ proto.fields.hdr = ProtoField.none("ebm.hdr", "Header")
 proto.fields.hdr_plen = ProtoField.uint16("ebm.hdr.payload_len", "Payload Length")
 proto.fields.hdr_flags = ProtoField.uint8("ebm.hdr.flags", "Flags", base.HEX)
 proto.fields.hdr_dir = ProtoField.bool("ebm.hdr.dir", "Direction", 8, vs_dir, 0x80)
-proto.fields.hdr_class = ProtoField.uint8("ebm.hdr.class", "Class", base.DEC, vs_class, 0x30)
 proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mode, 0x03)
-proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number")
+proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number", nil, vs_seq)
 proto.fields.hdr_status = ProtoField.uint8("ebm.hdr.status", "Status", nil, vs_status)
-proto.fields.payload = ProtoField.none("ebm.payload", "Payload")
-proto.fields.padding = ProtoField.none("ebm.padding", "Padding")
+proto.fields.payload = ProtoField.bytes("ebm.payload", "Payload", base.NONE)
+proto.fields.padding = ProtoField.bytes("ebm.padding", "Padding", base.NONE)
 
 proto.fields.cmd = ProtoField.none("ebm.cmd", "Command")
 proto.fields.cmd_type = ProtoField.uint8("ebm.cmd.type", "Type")
@@ -90,6 +93,7 @@ proto.fields.data = ProtoField.bytes("ebm.data", "Data")
 proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
 proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
 
+proto.experts.seq_magic = ProtoExpert.new("ebm.seq.magic", "Sequence Magic", expert.group.SEQUENCE, expert.severity.NOTE)
 proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
 
 local f_plen = Field.new("ebm.hdr.payload_len")
@@ -100,11 +104,12 @@ local f_status = Field.new("ebm.hdr.status")
 
 -- conversation tracking for populating
 -- frametype and reconciling reads with data
-local requests
+local convlist, convlist_dev, convlist_pre
 
 function proto.init ()
-	-- FIXME: not sure this is safe over multiple sessions
-	requests = {}
+	convlist = {}
+	convlist_dev = {}
+	convlist_pre = {}
 end
 
 function proto.dissector (tvb, pinfo, tree)
@@ -138,7 +143,7 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--        0 1 2 3 4 5 6 7
 	--       +-+-+-+-+-+-+-+-+
-	--       |D 0 C C 0 0 M M|
+	--       |D ? ? ? ? ? M M|
 	--       +-+-+-+-+-+-+-+-+
 	--
 	--    D (Direction)
@@ -146,12 +151,6 @@ function proto.dissector (tvb, pinfo, tree)
 	--       0 - Response
 	--
 	--       1 - Request
-	--
-	--    C (Class?)
-	--
-	--       0 - Normal
-	--
-	--       3 - System
 	--
 	--    M (Mode)
 	--
@@ -173,27 +172,52 @@ function proto.dissector (tvb, pinfo, tree)
 	local hdr_flags_tvb = hdr_tvb(2, 1)
 	local hdr_flags = hdr_tree:add(proto.fields.hdr_flags, hdr_flags_tvb())
 
-	if bit.band(hdr_flags_tvb():uint(), 0x4c) ~= 0 then
-		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flag bits 1, 4 and 5 not all unset")
+	if bit.band(hdr_flags_tvb():uint(), 0x7c) ~= 0 then
+		hdr_flags:add_proto_expert_info(proto.experts.assert, "Flag bits 1-5 not all unset")
 	end
 
 	hdr_flags:add(proto.fields.hdr_dir, hdr_flags_tvb())
-	hdr_flags:add(proto.fields.hdr_class, hdr_flags_tvb())
 	hdr_flags:add(proto.fields.hdr_mode, hdr_flags_tvb())
-
-	local response = f_dir()()
-
-	pinfo.cols.info:append(response and ": Response" or ": Query")
 
 	hdr_tree:add(proto.fields.hdr_seq, hdr_tvb(3, 4))
 	local seq = f_seq()()
+
+	local response = (seq == SEQ.HELLO_CLIENT or seq == SEQ.HELLO_SERVER) and (seq == SEQ.HELLO_SERVER) or f_dir()()
+	local server = response and pinfo.src or pinfo.dst
+	local client = response and pinfo.dst or pinfo.src
+	local dev = tostring(server) .. " " .. tostring(client)
+
+	pinfo.cols.info:append(response and ": Response" or ": Request")
+
 	if pinfo.visited then
-		if requests[seq][not response] ~= nil then
-			hdr_tree:add(proto.fields[response and "frame_request" or "frame_response"], requests[seq][not response]):set_generated()
-		end
+		hdr_tree:add(proto.fields["frame_" .. (response and "request" or "response")], convlist[pinfo.number].partner):set_generated()
 	else
-		if not requests[seq] then requests[seq] = { ["cmds"] = {} } end
-		requests[seq][response] = pinfo.number
+		if not convlist_pre[dev] then
+			convlist_pre[dev] = {}
+		end
+
+		if not response then
+			if seq == SEQ.HELLO_CLIENT then
+				convlist_pre[dev] = {}
+			end
+
+			convlist_pre[dev][seq] = pinfo.number
+		else
+			if seq == SEQ.HELLO_SERVER then
+				seq = SEQ.HELLO_CLIENT
+			end
+
+			-- guard incase we never see the request
+			if convlist_pre[dev] and convlist_pre[dev][seq] then
+				convlist[pinfo.number] = { partner = convlist_pre[dev][seq] }
+				convlist[convlist_pre[dev][seq]].partner = pinfo.number
+				table.remove(convlist_pre[dev], seq)
+			end
+
+			if seq == SEQ.HELLO_SERVER then
+				convlist_pre[dev] = {}
+			end
+		end
 	end
 
 	hdr_tree:add(proto.fields.hdr_status, hdr_tvb(7, 1))
@@ -226,6 +250,10 @@ function proto.dissector (tvb, pinfo, tree)
 		return len
 	end
 
+	if not pinfo.visited then
+		convlist[pinfo.number] = {}
+	end
+
 	local pi, pi_tvb
 	local offset = 0
 	local records = 0
@@ -243,7 +271,7 @@ function proto.dissector (tvb, pinfo, tree)
 		--    Note: only observed three (3) octets
 		--
 
-		local cmds = requests[seq]["cmds"]
+		local cmds = convlist[convlist[pinfo.number].partner].cmds
 		for i, cmd in pairs(cmds) do
 			records = records + 1
 
@@ -289,6 +317,10 @@ function proto.dissector (tvb, pinfo, tree)
 		--    The Value field is three octets, and is present only when M is
 		--    set to two (2) indicating write.
 
+		if not pinfo.visited then
+			convlist[pinfo.number].cmds = {}
+		end
+
 		while offset < payload_len do
 			records = records + 1
 
@@ -297,29 +329,37 @@ function proto.dissector (tvb, pinfo, tree)
 				break
 			end
 
-			local mode = f_mode()()
+			local cmd_type = payload_tvb(offset, 1):uint()
 
-			pi_tvb = payload_tvb(offset, mode == 1 and 6 or 9)
-			pi = payload_tree:add(proto.fields.cmd, pi_tvb())
-			offset = offset + pi_tvb:len()
+			if cmd_type == 1 then
+				local mode = f_mode()()
 
-			pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
-			pi:add(proto.fields.cmd_read_reg, pi_tvb(1, 3))
-			pi:add(proto.fields.cmd_read_len, pi_tvb(4, 2))
-			if mode == 2 then
-				pi:add(proto.fields.cmd_read_val, pi_tvb(6, 3))
-			end
+				pi_tvb = payload_tvb(offset, mode == 1 and 6 or 9)
+				pi = payload_tree:add(proto.fields.cmd, pi_tvb())
+				offset = offset + pi_tvb:len()
 
-			if pi_tvb(0, 1):uint() ~= 1 then
+				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
+
+				pi:add(proto.fields.cmd_read_reg, pi_tvb(1, 3))
+				pi:add(proto.fields.cmd_read_len, pi_tvb(4, 2))
+				if pi_tvb(4, 2):uint() ~= 3 then
+					pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
+				end
+				if mode == 2 then
+					pi:add(proto.fields.cmd_read_val, pi_tvb(6, 3))
+				end
+
+				if not pinfo.visited then
+					table.insert(convlist[pinfo.number].cmds, { cmd_type, pi_tvb(1, 3):uint(), pi_tvb(4, 2):uint() })
+				end
+			else
+				pi_tvb = payload_tvb(offset)
+				pi = payload_tree:add(proto.fields.cmd, pi_tvb())
+				offset = offset + pi_tvb:len()
+
+				pi:add(proto.fields.cmd_type, pi_tvb(0, 1))
+
 				pi:add_proto_expert_info(proto.experts.assert, "Command Type expected to be 1")
-			end
-
-			if pi_tvb(4, 2):uint() ~= 3 then
-				pi:add_proto_expert_info(proto.experts.assert, "Register Length expected to be 3")
-			end
-
-			if not pinfo.visited then
-				table.insert(requests[seq]["cmds"], { pi_tvb(0, 1):uint(), pi_tvb(1, 3):uint(), pi_tvb(4, 2):uint() })
 			end
 		end
 	end
