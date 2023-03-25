@@ -37,14 +37,16 @@ To set up your OS, run:
 
        sudo apt install --no-install-recommends lua5.1 snmpd sudo
 
-   If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET` support)](https://github.com/luaposix/luaposix/releases/tag/v35.1) then you may run:
+   Now depending on:
 
-       sudo apt install --no-install-recommends lua-posix
+    * If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET` support)](https://github.com/luaposix/luaposix/releases/tag/v35.1), then run:
 
-   Otherwise you will need to run:
+          sudo apt install --no-install-recommends lua-posix
 
-       sudo apt install --no-install-recommends build-essential liblua5.1-dev luarocks
-       sudo luarocks install luaposix
+    * Otherwise, run:
+
+          sudo apt install --no-install-recommends build-essential liblua5.1-dev luarocks
+          sudo luarocks install luaposix
 
  * **OpenWRT:**
 
