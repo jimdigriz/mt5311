@@ -134,6 +134,16 @@ function proto.dissector (tvb, pinfo, tree)
 	--    Response - Length of payload incremented by six (6)
 	--               (header length excluding 'plen' field)
 	--
+	-- Sequence
+	--
+	--    Starts at 1 (not zero) and increments for each request
+	--
+	--    There are two magic numbers:
+	--
+	--       0x6c360000 - Client Hello Handshake (request)
+	--
+	--       0x6c364556 - Server Hello Handshake (response)
+	--
 	-- Flags
 	--
 	--        0 1 2 3 4 5 6 7
@@ -144,6 +154,8 @@ function proto.dissector (tvb, pinfo, tree)
 	--    D (Direction)
 	--
 	--       0 - Response
+	--
+	--           Note: if sequence is a magic number D = 0 always
 	--
 	--       1 - Request
 	--
