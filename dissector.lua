@@ -194,10 +194,6 @@ function proto.dissector (tvb, pinfo, tree)
 	end
 
 	local response = (seq == SEQ.HELLO_CLIENT or seq == SEQ.HELLO_SERVER) and (seq == SEQ.HELLO_SERVER) or f_dir()()
-	local server = response and pinfo.src or pinfo.dst
-	local client = response and pinfo.dst or pinfo.src
-	local dev = tostring(server) .. " " .. tostring(client)
-
 	pinfo.cols.info:append(response and ": Response" or ": Request")
 
 	if pinfo.visited then
@@ -209,6 +205,10 @@ function proto.dissector (tvb, pinfo, tree)
 		-- number. When the response is processed, it looks here for
 		-- the request's frame number and then sets up convlist.
 		-- When handshakes are detected, convlist_pre[dev] is flushed.
+
+		local server = response and pinfo.src or pinfo.dst
+		local client = response and pinfo.dst or pinfo.src
+		local dev = tostring(server) .. " " .. tostring(client)
 
 		convlist[pinfo.number] = {}
 
