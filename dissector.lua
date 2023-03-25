@@ -104,11 +104,17 @@ local f_status = Field.new("ebm.hdr.status")
 
 -- conversation tracking for populating
 -- frametype and reconciling reads with data
-local convlist, convlist_dev, convlist_pre
+--
+-- convlist_pre is used temporary for the request to record
+-- its frame number for the request to discover. It is keyed
+-- by 'dev' (server MAC + client MAC) and then by the sequence
+-- number. When the response is processed, it looks here for
+-- the request's frame number and then sets up convlist.
+-- When handshakes are detected, convlist_pre[dev] is flushed.
+local convlist, convlist_pre
 
 function proto.init ()
 	convlist = {}
-	convlist_dev = {}
 	convlist_pre = {}
 end
 
