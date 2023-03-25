@@ -28,7 +28,7 @@ function read_register_map ()
 	local warn = function (msg)
 		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg .. ", ignoring")
 	end
-	for line in io.lines(__DIR__ .. __DIR_SEPARATOR__ .. "register.map") do
+	for line in io.lines(__DIR__ .. (__DIR__:len() > 0 and __DIR_SEPARATOR__ or "") .. "register.map") do
 		line_count = line_count + 1
 
 		line = line:gsub("#.*$", "")
