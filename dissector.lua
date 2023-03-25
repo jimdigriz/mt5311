@@ -189,10 +189,8 @@ function proto.dissector (tvb, pinfo, tree)
 	local hdr_seq_tree = hdr_tree:add(proto.fields.hdr_seq, hdr_tvb(3, 4))
 	local seq = f_seq()()
 
-	if seq == SEQ.HELLO_CLIENT then
-		hdr_seq_tree:add_proto_expert_info(proto.experts.seq, "Client Hello")
-	elseif seq == SEQ.HELLO_SERVER then
-		hdr_seq_tree:add_proto_expert_info(proto.experts.seq, "Server Hello")
+	if seq == SEQ.HELLO_CLIENT or seq == SEQ.HELLO_SERVER then
+		hdr_seq_tree:add_proto_expert_info(proto.experts.seq):append_text(" (" .. ((seq == SEQ.HELLO_CLIENT) and "Client" or "Server") .. " Hello)")
 	end
 
 	local response = (seq == SEQ.HELLO_CLIENT or seq == SEQ.HELLO_SERVER) and (seq == SEQ.HELLO_SERVER) or f_dir()()
