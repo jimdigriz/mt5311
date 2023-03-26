@@ -1,3 +1,7 @@
+-- EBM Wireshark Dissector
+-- Copyright (C) 2023, coreMem Limited <info@coremem.com>
+-- SPDX-License-Identifier: AGPL-3.0-only
+
 -- The Ethernet Boot & Management (EBM) protocol smells like an
 -- RPC for I2C. You ask for a register and it returns its value.
 --
