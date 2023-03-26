@@ -223,12 +223,13 @@ function proto.dissector (tvb, pinfo, tree)
 		if not response then
 			if seq == SEQ.HELLO_CLIENT then
 				convlist_pre[dev] = {}
+				seq = -1
 			end
 
 			convlist_pre[dev][seq] = pinfo.number
 		else
 			if seq == SEQ.HELLO_SERVER then
-				seq = SEQ.HELLO_CLIENT
+				seq = -1
 			end
 
 			-- guard incase we never see the request
@@ -238,7 +239,8 @@ function proto.dissector (tvb, pinfo, tree)
 				table.remove(convlist_pre[dev], seq)
 			end
 
-			if seq == SEQ.HELLO_SERVER then
+			-- again, guard incase we never see the request
+			if seq == -1 then
 				convlist_pre[dev] = {}
 			end
 		end
