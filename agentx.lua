@@ -83,7 +83,7 @@ function M:disconnect ()
 end
 
 function M:send (msg)
-	assert(socket.send(self._fd, msg, {family=socket.AF_UNIX, path=self._path}) == msg:len())
+	assert(socket.send(self._fd, msg) == msg:len())
 end
 
 function M:recv ()
