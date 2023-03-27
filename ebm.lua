@@ -48,6 +48,15 @@ end
 local M = {}
 
 function M:session (t)
+	t = t or {}
+
+	if t.iface == nil then
+		error("missing 'iface' parameter")
+	end
+	if t.addr == nil then
+		error("missing 'addr' parameter")
+	end
+
 	setmetatable({ __gc = function() M:disconnect() end }, self)
 	self.__index = self
 

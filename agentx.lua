@@ -54,6 +54,8 @@ end
 local M = {}
 
 function M:session (t)
+	t = t or {}
+
 	setmetatable({ __gc = function() M:disconnect() end }, self)
 	self.__index = self
 
