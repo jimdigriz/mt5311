@@ -64,7 +64,7 @@ function M:session (t)
 	t.path = t.path or "/var/agentx/master"
 
 	self._fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
-	local ok, err, e = socket.connect(self._fd, t.path)
+	local ok, err, e = socket.connect(self._fd, { family=AF_UNIX, path=t.path })
 	if not ok then
 		return nil, err
 	end
