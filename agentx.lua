@@ -15,6 +15,8 @@ if not status then
 	struct = assert(loadfile(arg[0]:match("^(.-/?)[^/]+.lua$") .. "struct.lua"))()
 end
 
+local unpack = table.unpack or _G.unpack
+
 local DEADTIME = 3
 local MAXSIZE = 9000
 
