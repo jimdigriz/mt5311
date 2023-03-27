@@ -66,7 +66,10 @@ function M:session (t)
 	self._fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0))
 
 	local msg = pdu.open()
-	M:send(msg)
+	local status, err = pcall(function() return M:send(msg) end)
+	if not status then
+		return nil, err
+	end
 	print(M:recv())
 
 	return self
