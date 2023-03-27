@@ -2,7 +2,6 @@
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
 
--- https://luaposix.github.io/luaposix/examples/packet-socket.lua.html
 local socket = require "posix.sys.socket"
 local poll = require "posix.poll"
 local unistd = require "posix.unistd"

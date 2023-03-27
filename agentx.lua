@@ -4,7 +4,7 @@
 
 -- https://datatracker.ietf.org/doc/html/rfc2741
 
--- https://luaposix.github.io/luaposix/examples/packet-socket.lua.html
+local bit32 = require "bit32"
 local socket = require "posix.sys.socket"
 local poll = require "posix.poll"
 local unistd = require "posix.unistd"
@@ -48,9 +48,14 @@ end
 
 local pdu = {}
 
+function pdu._hdr (type, payload, flags)
+	flags = bit32.bor(flags and flags or 0x00, 0x0f)
+	return struct.pack(">BBBBIIII", 1, type, flags, 0, 0, 0, 0, payload:len())
+end
+
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
 function pdu.open ()
-	return struct.pack(">B", DEADTIME) .. "\0\0\0" .. "\0\0\0\0" .. val.enc.octetstring("EBM")
+	return pdu._hdr(1, struct.pack(">B", DEADTIME) .. "\0\0\0" .. "\0\0\0\0" .. val.enc.octetstring("EBM"))
 end
 
 local M = {}
