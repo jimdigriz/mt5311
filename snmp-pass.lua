@@ -14,11 +14,9 @@ if #arg < 2 then
 	os.exit(1)
 end
 
-local iface = arg[1]
-local addr = arg[2]
-
-local session = ebm:connect({iface=iface, addr=addr})
-session:send({reg='linktime'})
+-- local session = ebm:connect({iface=arg[1], addr=arg[2]})
+-- session:send({reg='linktime'})
+-- print(session:recv())
 
 -- integer, gauge, counter, timeticks, ipaddress, objectid, or string
 local function do_get(oid)

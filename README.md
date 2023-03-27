@@ -29,6 +29,7 @@ Where possible the following MIBs are supported:
  * [RFC 5650](https://datatracker.ietf.org/doc/html/rfc5650) - Definitions of Managed Objects for Very High Speed Digital Subscriber Line 2 (VDSL2)
  * [RFC 3728](https://datatracker.ietf.org/doc/html/rfc3728) - Definitions of Managed Objects for Very High Speed Digital Subscriber Lines (VDSL)
     * [RFC 4070](https://datatracker.ietf.org/doc/html/rfc4070) - Definitions of Managed Object Extensions for Very High Speed Digital Subscriber Lines (VDSL) Using Multiple Carrier Modulation (MCM) Line Coding
+ * [RFC 4070](https://datatracker.ietf.org/doc/html/rfc4706) - Definitions of Managed Objects for Asymmetric Digital Subscriber Line 2 (ADSL2)
  * [RFC 2662](https://www.rfc-editor.org/rfc/rfc2662) - Definitions of Managed Objects for the ADSL Lines
 
 To set up your OS, run:
@@ -56,9 +57,16 @@ To set up your OS, run:
 
 Now run:
 
+    git clone https://github.com/jimdigriz/mt5311.git /opt/mt5311
+    luarocks install luastruct
+
+If you are constrained on disk space, you may prefer to use:
+
     mkdir -p /opt/mt5311
     cd /opt/mt5311
-    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp.lua
+    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp-agentx.lua
+    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/agentx.lua
+    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/ebm.lua
     # alternatively use 'luarocks install luastruct'
     wget https://raw.githubusercontent.com/iryont/lua-struct/master/src/struct.lua
 
