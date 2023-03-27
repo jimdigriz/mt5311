@@ -39,11 +39,11 @@ function val.enc.searchrange (s, e, i)
 end
 
 function val.enc.octetstring (v)
-	return struct.pack(">Ic0c0", v:len(), v, string.rep("\0", v:len() - (vlen() % 4)))
+	return struct.pack(">Ic0c0", v:len(), v, string.rep("\0", v:len() - (v:len() % 4)))
 end
 
 function val.enc.type ()
-	error('nyi')
+	error("nyi")
 end
 
 local pdu = {}
