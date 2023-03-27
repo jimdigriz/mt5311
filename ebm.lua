@@ -56,7 +56,7 @@ function M:session (t)
 		error("missing 'addr' parameter")
 	end
 
-	setmetatable({ __gc = function() M:disconnect() end }, self)
+	setmetatable({ __gc = function() M:close() end }, self)
 	self.__index = self
 
 	self._iface = t.iface
@@ -80,8 +80,8 @@ function M:session (t)
 	self._seq = 1
 
 	-- luaposix does not support AF_PACKET/SOCK_DGRAM :(
-	self._fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(PROTO)))
-	assert(socket.bind(self._fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(t.iface)}))
+	self.fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(PROTO)))
+	assert(socket.bind(self.fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(t.iface)}))
 
 	-- handshake *seems* not to be necessary and may be more a check
 	self:send({seq=SEQ.HELLO_CLIENT, status=0, payload="\158\032\0\0\0\0\0"})
@@ -94,10 +94,10 @@ function M:session (t)
 	return self
 end
 
-function M:disconnect ()
-	if self._fd ~= nil then
-		unistd.close(self._fd)
-		self._fd = nil
+function M:close ()
+	if self.fd ~= nil then
+		unistd.close(self.fd)
+		self.fd = nil
 	end
 end
 
@@ -146,7 +146,7 @@ function M:send (t)
 	-- Padding
 	pkt = pkt .. string.rep("\0", math.max(0, 64 - pkt:len()))
 
-	assert(socket.send(self._fd, pkt) == pkt:len())
+	assert(socket.send(self.fd, pkt) == pkt:len())
 
 	self._pending = true
 end
@@ -156,12 +156,12 @@ function M:recv ()
 		error("called recv before send")
 	end
 
-	local r = poll.rpoll(self._fd, 100)
+	local r = poll.rpoll(self.fd, 100)
 	if r == 0 then
 		return nil, "no response"
 	end
 
-	local pkt = socket.recv(self._fd, MAXSIZE)
+	local pkt = socket.recv(self.fd, MAXSIZE)
 
 	-- remember to filter on dst (our) macaddr as someone may have the NIC set to promisc
 

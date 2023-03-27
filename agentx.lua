@@ -23,11 +23,21 @@ local HDRSIZE = 20
 local TYPE = {
 	_hdr		= 0,
 	open		= 1,
+	close		= 2,
 	response	= 18
 }
 
 local ERROR = {
 	noAgentXError	= 0
+}
+
+local REASON = {
+	other		= 1,
+	parseError	= 2,
+	protocolError	= 3,
+	timeouts	= 4,
+	shutdown	= 5,
+	byManager	= 6
 }
 
 local val = { enc = {}, dec = {} }
@@ -82,6 +92,17 @@ pdu.enc[TYPE.open] = function (self)
 	return pdu.enc[TYPE._hdr](self, TYPE.open, struct.pack(">B", DEADTIME) .. "\0\0\0" .. val.enc.objectid({}) .. val.enc.octetstring("EBM"))
 end
 
+pdu.enc[TYPE.close] = function (self, reason)
+	reason = reason or REASON.other
+	return pdu.enc[TYPE._hdr](self, TYPE.close, struct.pack(">B", reason) .. "\0\0\0")
+end
+
+pdu.dec[TYPE.close] = function (self, res, pkt)
+	local reason = struct.unpack(">B", pkt)
+	res.reason = reason
+	return res
+end
+
 pdu.dec[TYPE.response] = function (self, res, pkt)
 	local sysUpTime, perror, index = struct.unpack(">IHH", pkt)
 	res.sysUpTime = sysUpTime
@@ -95,30 +116,30 @@ local M = {}
 function M:session (t)
 	t = t or {}
 
-	setmetatable({ __gc = function() M:disconnect() end }, self)
+	setmetatable({ __gc = function() M:close() end }, self)
 	self.__index = self
 
 	t.path = t.path or "/var/agentx/master"
 
 	self.sessionID = 0
 
-	self._fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
-	local ok, err, e = socket.connect(self._fd, { family=socket.AF_UNIX, path=t.path })
+	self.fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
+	local ok, err, e = socket.connect(self.fd, { family=socket.AF_UNIX, path=t.path })
 	if not ok then
-		M:disconnect()
+		M:close()
 		return nil, err
 	end
 
 	M:send(pdu.enc[TYPE.open](self))
-	local r = poll.rpoll(self._fd, 100)
+	local r = poll.rpoll(self.fd, 100)
 	if r == 0 then
-		M:disconnect()
+		M:close()
 		return nil, "no response"
 	end
 
 	local res = M:recv()
 	if res.error ~= ERROR.noAgentXError then
-		M:disconnect()
+		M:close()
 		return nil, "AgentX master returned error code " .. tostring(res.error)
 	end
 
@@ -127,22 +148,31 @@ function M:session (t)
 	return self
 end
 
-function M:disconnect ()
-	if self._fd ~= nil then
-		unistd.close(self_.fd)
-		self._fd = nil
+function M:close ()
+	if self.sessionID ~= nil then
+		M:send(pdu.enc[TYPE.close](self))
+		local res = M:recv()
+		if res.error ~= ERROR.noAgentXError then
+			return false, "AgentX master returned error code " .. tostring(res.error)
+		end
+		self.sessionID = nil
 	end
+	if self.fd ~= nil then
+		unistd.close(self_.fd)
+		self.fd = nil
+	end
+	return true
 end
 
 function M:send (msg)
-	assert(socket.send(self._fd, msg) == msg:len())
+	assert(socket.send(self.fd, msg) == msg:len())
 end
 
 function M:recv ()
 	-- stream socket so keep pulling...
 	local hdr = ""
 	while true do
-		hdr = hdr .. socket.recv(self._fd, HDRSIZE - hdr:len())
+		hdr = hdr .. socket.recv(self.fd, HDRSIZE - hdr:len())
 		if hdr:len() == 20 then break end
 	end
 
@@ -153,7 +183,7 @@ function M:recv ()
 
 	local payload = ""
 	while true do
-		payload = payload .. socket.recv(self._fd, res._hdr.payload_length - payload:len())
+		payload = payload .. socket.recv(self.fd, res._hdr.payload_length - payload:len())
 		if payload:len() == res._hdr.payload_length then break end
 	end
 
