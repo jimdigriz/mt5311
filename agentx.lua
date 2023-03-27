@@ -50,7 +50,7 @@ local pdu = {}
 
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
 function pdu.open ()
-	return struct.pack(">B", DEADTIME) .. "\0\0\0" .. "\0\0\0\0" .. val.octetstring("EBM")
+	return struct.pack(">B", DEADTIME) .. "\0\0\0" .. "\0\0\0\0" .. val.enc.octetstring("EBM")
 end
 
 local M = {}
