@@ -47,7 +47,7 @@ end
 
 local M = {}
 
-function M:connect (t)
+function M:session (t)
 	setmetatable({ __gc = function() M:_disconnect() end }, self)
 	self.__index = self
 

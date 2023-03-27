@@ -14,7 +14,7 @@ if #arg < 2 then
 	os.exit(1)
 end
 
--- local session = ebm:connect({iface=arg[1], addr=arg[2]})
+-- local session = ebm:session({iface=arg[1], addr=arg[2]})
 -- session:send({reg='linktime'})
 -- print(session:recv())
 

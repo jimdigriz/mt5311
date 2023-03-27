@@ -12,7 +12,7 @@ if not status then
 end
 local status, ebm = pcall(function () return require "ebm" end)
 if not status then
-	struct = assert(loadfile(dir) .. "ebm.lua"))()
+	struct = assert(loadfile(dir .. "ebm.lua"))()
 end
 
 if #arg < 2 then
@@ -20,7 +20,7 @@ if #arg < 2 then
 	os.exit(1)
 end
 
-
+local session = agentx:session()
 
 -- local session = ebm:connect({iface=arg[1], addr=arg[2]})
 -- session:send({reg='linktime'})
