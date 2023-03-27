@@ -58,7 +58,7 @@ To set up your OS, run:
 Now run:
 
     git clone https://github.com/jimdigriz/mt5311.git /opt/mt5311
-    luarocks install luastruct
+    luarocks install lua-struct		# (*with* hyphen)
 
 If you are constrained on disk space, you may prefer to use:
 
@@ -67,7 +67,7 @@ If you are constrained on disk space, you may prefer to use:
     wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp-agentx.lua
     wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/agentx.lua
     wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/ebm.lua
-    # alternatively use 'luarocks install luastruct'
+    # alternatively use 'luarocks install lua-struct' (*with* hyphen)
     wget https://raw.githubusercontent.com/iryont/lua-struct/master/src/struct.lua
 
 Check the tool is working by running as `root`:
