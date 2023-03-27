@@ -50,7 +50,7 @@ local pdu = {}
 
 function pdu._hdr (type, payload, flags)
 	flags = bit32.bor(flags and flags or 0x00, 0x0f)
-	return struct.pack(">BBBBIIII", 1, type, flags, 0, 0, 0, 0, payload:len())
+	return struct.pack(">BBBBIIIIc0", 1, type, flags, 0, 0, 0, 0, payload:len(), payload)
 end
 
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
