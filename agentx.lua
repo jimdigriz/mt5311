@@ -75,6 +75,11 @@ function M:session (t)
 	end
 
 	M:send(pdu.open())
+	local r = poll.rpoll(self._fd, 200)
+	if r == 0 then
+		error("no response")
+	end
+
 	print(M:recv())
 
 	return self
