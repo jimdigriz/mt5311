@@ -58,14 +58,14 @@ function read_register_map ()
 end
 read_register_map()
 
-local SEQ = {
-	HELLO_CLIENT		= 0x6c360000,
-	HELLO_SERVER		= 0x6c364556
+local REQUEST_ID = {
+	HELLO_CLIENT	= 0x6c360000,
+	HELLO_SERVER	= 0x6c364556
 }
 
 local vs_status = {
-	[0] = "Success",
-	[255] = "No error"
+	[0]		= "Success",
+	[255]		= "No error"
 }
 
 local proto = Proto.new("EBM", "Ethernet Boot & Management Protocol")
@@ -75,7 +75,7 @@ proto.fields.hdr_plen = ProtoField.uint16("ebm.hdr.payload_len", "Payload Length
 proto.fields.hdr_flags = ProtoField.uint8("ebm.hdr.flags", "Flags", base.HEX)
 proto.fields.hdr_dir = ProtoField.bool("ebm.hdr.dir", "Direction", 8, vs_dir, 0x80)
 proto.fields.hdr_mode = ProtoField.uint8("ebm.hdr.mode", "Mode", base.DEC, vs_mode, 0x03)
-proto.fields.hdr_seq = ProtoField.uint32("ebm.hdr.seq", "Sequence Number")
+proto.fields.hdr_id = ProtoField.uint32("ebm.hdr.id", "Request Id")
 proto.fields.hdr_status = ProtoField.uint8("ebm.hdr.status", "Status", nil, vs_status)
 proto.fields.payload = ProtoField.none("ebm.payload", "Payload")
 proto.fields.padding = ProtoField.none("ebm.padding", "Padding")
@@ -93,13 +93,13 @@ proto.fields.data = ProtoField.bytes("ebm.data", "Data")
 proto.fields.frame_request = ProtoField.framenum("ebm.request", "Request In", nil, frametype.REQUEST)
 proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In", nil, frametype.RESPONSE)
 
-proto.experts.seq = ProtoExpert.new("ebm.seq.magic", "Sequence Magic", expert.group.SEQUENCE, expert.severity.NOTE)
+proto.experts.id = ProtoExpert.new("ebm.id.magic", "Request Id Magic", expert.group.SEQUENCE, expert.severity.NOTE)
 proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
 
 local f_plen = Field.new("ebm.hdr.payload_len")
 local f_dir = Field.new("ebm.hdr.dir")
 local f_mode = Field.new("ebm.hdr.mode")
-local f_seq = Field.new("ebm.hdr.seq")
+local f_id = Field.new("ebm.hdr.id")
 local f_status = Field.new("ebm.hdr.status")
 
 -- conversation tracking for populating
@@ -122,9 +122,9 @@ function proto.dissector (tvb, pinfo, tree)
 	--  0                   1                   2                   3
 	--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	-- |         Payload Length        |     Flags     |    Sequence   :
+	-- |         Payload Length        |     Flags     |   Request Id  :
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	-- :                   Sequence                    |     Status    |
+	-- :                  Request Id                   |     Status    |
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	-- |            Payload...
 	-- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -138,11 +138,15 @@ function proto.dissector (tvb, pinfo, tree)
 	--    Response - Length of payload incremented by six (6)
 	--               (header length excluding 'plen' field)
 	--
-	-- Sequence
+	-- Request Id
 	--
-	--    Starts at 1 (not zero) and increments for each request
+	--    Value used reconcile responses back to their originating requests
 	--
-	--    There are two magic numbers:
+	--    DSLmonitor behaviour:
+	--
+	--       * simple incrementing counter starting at 1 (not zero) is used
+	--
+	--    Two magic numbers observed when using DSLmonitor:
 	--
 	--       0x6c360000 - Client Hello Handshake (request)
 	--
@@ -159,7 +163,7 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--       0 - Response
 	--
-	--           Note: if sequence is a magic number D = 0 always
+	--           Note: if Request Id is a magic number D = 0 always
 	--
 	--       1 - Request
 	--
@@ -190,14 +194,14 @@ function proto.dissector (tvb, pinfo, tree)
 	hdr_flags:add(proto.fields.hdr_dir, hdr_flags_tvb())
 	hdr_flags:add(proto.fields.hdr_mode, hdr_flags_tvb())
 
-	local hdr_seq_tree = hdr_tree:add(proto.fields.hdr_seq, hdr_tvb(3, 4))
-	local seq = f_seq()()
+	local hdr_id_tree = hdr_tree:add(proto.fields.hdr_id, hdr_tvb(3, 4))
+	local id = f_id()()
 
-	if seq == SEQ.HELLO_CLIENT or seq == SEQ.HELLO_SERVER then
-		hdr_seq_tree:add_proto_expert_info(proto.experts.seq):append_text(" (" .. ((seq == SEQ.HELLO_CLIENT) and "Client" or "Server") .. " Hello)")
+	if id == REQUEST_ID.HELLO_CLIENT or id == REQUEST_ID.HELLO_SERVER then
+		hdr_id_tree:add_proto_expert_info(proto.experts.id):append_text(" (" .. ((id == REQUEST_ID.HELLO_CLIENT) and "Client" or "Server") .. " Hello)")
 	end
 
-	local response = (seq == SEQ.HELLO_CLIENT or seq == SEQ.HELLO_SERVER) and (seq == SEQ.HELLO_SERVER) or f_dir()()
+	local response = (id == REQUEST_ID.HELLO_CLIENT or id == REQUEST_ID.HELLO_SERVER) and (id == REQUEST_ID.HELLO_SERVER) or f_dir()()
 	pinfo.cols.info:append(response and ": Response" or ": Request")
 
 	if pinfo.visited then
@@ -205,7 +209,7 @@ function proto.dissector (tvb, pinfo, tree)
 	else
 		-- convlist_pre is used to temporarily hold the request frame number
 		-- for the response to discover. It is keyed by 'dev' (server MAC
-		-- concatenated with client MAC) and then by the sequence
+		-- concatenated with client MAC) and then by the iduence
 		-- number. When the response is processed, it looks here for
 		-- the request's frame number and then sets up convlist.
 		-- When handshakes are detected, convlist_pre[dev] is flushed.
@@ -221,26 +225,26 @@ function proto.dissector (tvb, pinfo, tree)
 		end
 
 		if not response then
-			if seq == SEQ.HELLO_CLIENT then
+			if id == REQUEST_ID.HELLO_CLIENT then
 				convlist_pre[dev] = {}
-				seq = -1
+				id = -1
 			end
 
-			convlist_pre[dev][seq] = pinfo.number
+			convlist_pre[dev][id] = pinfo.number
 		else
-			if seq == SEQ.HELLO_SERVER then
-				seq = -1
+			if id == REQUEST_ID.HELLO_SERVER then
+				id = -1
 			end
 
 			-- guard incase we never see the request
-			if convlist_pre[dev] and convlist_pre[dev][seq] then
-				convlist[pinfo.number].partner = convlist_pre[dev][seq]
-				convlist[convlist_pre[dev][seq]].partner = pinfo.number
-				table.remove(convlist_pre[dev], seq)
+			if convlist_pre[dev] and convlist_pre[dev][id] then
+				convlist[pinfo.number].partner = convlist_pre[dev][id]
+				convlist[convlist_pre[dev][id]].partner = pinfo.number
+				table.remove(convlist_pre[dev], id)
 			end
 
 			-- again, guard incase we never see the request
-			if seq == -1 then
+			if id == -1 then
 				convlist_pre[dev] = {}
 			end
 		end
