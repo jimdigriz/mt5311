@@ -61,15 +61,15 @@ function M:session (t)
 	setmetatable({ __gc = function() M:disconnect() end }, self)
 	self.__index = self
 
-	self._path = t.path or "/var/agentx/master"
+	t.path = t.path or "/var/agentx/master"
 
-	self._fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0))
-
-	local msg = pdu.open()
-	local status, err = pcall(function() return M:send(msg) end)
-	if not status then
+	self._fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
+	local ok, err, e = socket.connect(self._fd, t.path)
+	if not ok then
 		return nil, err
 	end
+
+	M:send(pdu.open())
 	print(M:recv())
 
 	return self
@@ -83,7 +83,7 @@ function M:disconnect ()
 end
 
 function M:send (msg)
-	assert(socket.sendto(self._fd, msg, {family=socket.AF_UNIX, path=self._path}) == msg:len())
+	assert(socket.send(self._fd, msg, {family=socket.AF_UNIX, path=self._path}) == msg:len())
 end
 
 function M:recv ()
