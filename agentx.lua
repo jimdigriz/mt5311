@@ -79,7 +79,7 @@ function M:disconnect ()
 	end
 end
 
-function M:send ()
+function M:send (msg)
 	assert(socket.sendto(self._fd, msg, {family=socket.AF_UNIX, path=self._path}) == msg:len())
 end
 
