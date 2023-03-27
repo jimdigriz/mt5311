@@ -178,7 +178,7 @@ pdu.dec[TYPE.response] = function (self, res, pkt)
 	while pkt:len() > 0 do
 		local vtype, name, data
 		pkt, vtype, name, data = val.dec.varbind(pkt)
-		table.insert(res.varbind, {vtype, name, data})
+		table.insert(res.varbind, { ["type"] = vtype, name = name, data = data })
 	end
 
 	return res
