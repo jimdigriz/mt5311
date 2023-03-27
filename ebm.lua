@@ -48,7 +48,7 @@ end
 local M = {}
 
 function M:session (t)
-	setmetatable({ __gc = function() M:_disconnect() end }, self)
+	setmetatable({ __gc = function() M:disconnect() end }, self)
 	self.__index = self
 
 	self._iface = t.iface
@@ -88,7 +88,7 @@ end
 
 function M:disconnect ()
 	if self._fd ~= nil then
-		unistd.close(self._fd) end
+		unistd.close(self._fd)
 		self._fd = nil
 	end
 end
