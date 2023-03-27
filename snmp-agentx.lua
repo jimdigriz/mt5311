@@ -20,7 +20,14 @@ if #arg < 2 then
 	os.exit(1)
 end
 
-local session = agentx:session()
+local session = agentx:session({name="EBM"})
+local res, err = session:index(agentx.vbtype.integer, {1,3,6,1,2,1,2,2,1})
+if err then
+	error(err)
+end
+for k, v in pairs(res) do
+	print(k, v)
+end
 
 -- local session = ebm:connect({iface=arg[1], addr=arg[2]})
 -- session:send({reg='linktime'})
