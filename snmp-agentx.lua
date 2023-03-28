@@ -37,15 +37,13 @@ while not ifindex do
 	table.insert(iftable, ifindex)
 
 	res = session:register({range_subid=#iftable - 1, subtree=iftable, upper_bound=22})
-	if res.error == agentx.error.noAgentXError then
-		break
-	elseif res.err == agentx.error.duplicateRegistration then
+	if res.err == agentx.error.duplicateRegistration then
 		res = session:index_deallocate({["type"]=agentx.type.integer, name=iftable_ifindex, data=ifindex})
 		if res.error ~= agentx.error.noAgentXError then
 			error(res.error)
 		end
 		ifindex = nil
-	else
+	elseif res.error ~= agentx.error.noAgentXError then
 		error(res.error)
 	end
 end
