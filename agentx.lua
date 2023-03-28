@@ -135,9 +135,11 @@ end
 local pdu = { enc = {}, dec = {} }
 
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.1
-pdu.enc_hdr = function (sessionID, t)
+pdu.enc_hdr = function (s, t)
 	local flags = bit32.bor(t.flags and t.flags or 0x00, FLAGS.NETWORK_BYTE_ORDER)
-	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, sessionID, 0, 0, t.payload:len()) .. t.payload
+	local packetID = s._packetID
+	s._packetID = packetID + 1
+	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, s._sessionID, 0, packetID, t.payload:len()) .. t.payload
 end
 
 pdu.dec_hdr = function (pkt)
@@ -154,17 +156,17 @@ pdu.dec_hdr = function (pkt)
 end
 
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
-pdu.enc[PTYPE.open] = function (sessionID, t)
+pdu.enc[PTYPE.open] = function (s, t)
 	local deadtime = t.deadtime or 0
 	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc.objectid({}) .. val.enc.octetstring(t.name)
-	return pdu.enc_hdr(sessionID, {["type"]=PTYPE.open, payload=payload})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.open, payload=payload})
 end
 
-pdu.enc[PTYPE.close] = function (sessionID, t)
+pdu.enc[PTYPE.close] = function (s, t)
 	t = t or {}
 	local reason = t.reason or REASON.other
 	local payload = struct.pack(">B", reason) .. "\0\0\0"
-	return pdu.enc_hdr(sessionID, {["type"]=PTYPE.close, payload=payload})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.close, payload=payload})
 end
 
 pdu.dec[PTYPE.close] = function (res, pkt)
@@ -173,7 +175,7 @@ pdu.dec[PTYPE.close] = function (res, pkt)
 	return res
 end
 
-pdu.enc[PTYPE.register] = function (sessionID, t)
+pdu.enc[PTYPE.register] = function (s, t)
 	local timeout = t.timeout or 0
 	local priority = t.priority or 127
 	local range_subid = t.range_subid or 0
@@ -181,23 +183,23 @@ pdu.enc[PTYPE.register] = function (sessionID, t)
 	if range_subid > 0 then
 		payload = payload .. struct.pack(">I", t.upper_bound)
 	end
-	return pdu.enc_hdr(sessionID, {["type"]=PTYPE.register, payload=payload})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.register, payload=payload})
 end
 
-pdu.enc[PTYPE.indexAllocate] = function (sessionID, t)
+pdu.enc[PTYPE.indexAllocate] = function (s, t)
 	local payload = ""
 	for i, v in ipairs(t.varbind) do
 		payload = payload .. val.enc.varbind(v)
 	end
-	return pdu.enc_hdr(sessionID, {["type"]=PTYPE.indexAllocate, payload=payload, flags=t.flags})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.indexAllocate, payload=payload, flags=t.flags})
 end
 
-pdu.enc[PTYPE.indexDeallocate] = function (sessionID, t)
+pdu.enc[PTYPE.indexDeallocate] = function (s, t)
 	local payload = ""
 	for i, v in ipairs(t.varbind) do
 		payload = payload .. val.enc.varbind(v)
 	end
-	return pdu.enc_hdr(sessionID, {["type"]=PTYPE.indexDeallocate, payload=payload, flags=t.flags})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.indexDeallocate, payload=payload, flags=t.flags})
 end
 
 pdu.dec[PTYPE.response] = function (self, res, pkt)
@@ -230,6 +232,7 @@ function M:session (t)
 	t.deadtime = 0
 
 	self._sessionID = 0
+	self._packetID = 0
 
 	self.fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
 	local ok, err, e = socket.connect(self.fd, { family=socket.AF_UNIX, path=t.path })
@@ -238,7 +241,7 @@ function M:session (t)
 		return nil, err
 	end
 
-	M:send(pdu.enc[PTYPE.open](self._sessionID, t))
+	M:send(pdu.enc[PTYPE.open](self, t))
 	local r = poll.rpoll(self.fd, 100)
 	if r == 0 then
 		M:close()
@@ -258,9 +261,9 @@ end
 
 function M:close ()
 	if self._sessionID ~= nil then
-		M:send(pdu.enc[PTYPE.close](self._sessionID))
+		M:send(pdu.enc[PTYPE.close](self))
 		local res = M:recv()
-		if res.error ~= ERROR.noAgentXError then
+		if res and res.error ~= ERROR.noAgentXError then
 			return false, "AgentX master returned error code " .. tostring(res.error)
 		end
 		self._sessionID = nil
@@ -273,7 +276,7 @@ function M:close ()
 end
 
 function M:register (t)
-	M:send(pdu.enc[PTYPE.register](self._sessionID, t))
+	M:send(pdu.enc[PTYPE.register](self, t))
 	return M:recv()
 end
 
@@ -281,7 +284,7 @@ function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	M:send(pdu.enc[PTYPE.indexAllocate](self._sessionID, t))
+	M:send(pdu.enc[PTYPE.indexAllocate](self, t))
 	return M:recv()
 end
 
@@ -289,7 +292,7 @@ function M:index_deallocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	M:send(pdu.enc[PTYPE.indexDeallocate](self._sessionID, t))
+	M:send(pdu.enc[PTYPE.indexDeallocate](self, t))
 	return M:recv()
 end
 
@@ -303,6 +306,7 @@ function M:recv ()
 	while true do
 		local buf = socket.recv(self.fd, HDRSIZE - hdr:len())
 		if buf:len() == 0 then
+			self._sessionID = nil
 			self.fd = nil
 			return nil, "connection closed"
 		end

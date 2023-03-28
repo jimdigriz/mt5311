@@ -33,7 +33,9 @@ while not ifindex do
 
 	ifindex = res.varbind[1].data
 
-	local iftable = {unpack(iftable_ifindex), ifindex}
+	local iftable = {unpack(iftable_ifindex)}
+	table.insert(iftable, ifindex)
+
 	res = session:register({range_subid=#iftable - 1, subtree=iftable, upper_bound=22})
 	if res.error == agentx.error.noAgentXError then
 		break
@@ -47,7 +49,6 @@ while not ifindex do
 		error(res.error)
 	end
 end
--- print(ifindex)
 session:close()
 
 -- local session = ebm:session({iface=arg[1], addr=arg[2]})
