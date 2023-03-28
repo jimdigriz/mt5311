@@ -20,15 +20,14 @@ if #arg < 2 then
 	os.exit(1)
 end
 
+local iftable_ifentry = {1,3,6,1,2,1,2,2,1}
 local session = agentx:session({name="EBM"})
-local res, err = session:index(agentx.vbtype.integer, {1,3,6,1,2,1,2,2,1})
+local res, err = session:index_allocate({type=agentx.type.integer, name=iftable_ifentry, flags=agentx.flags.NEW_INDEX})
 if err then
 	error(err)
 end
-for k, v in pairs(res) do
-	print(k, v)
-end
+session:close()
 
--- local session = ebm:connect({iface=arg[1], addr=arg[2]})
+-- local session = ebm:session({iface=arg[1], addr=arg[2]})
 -- session:send({reg='linktime'})
 -- print(session:recv())

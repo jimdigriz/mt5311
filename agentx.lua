@@ -20,6 +20,14 @@ local unpack = table.unpack or _G.unpack
 local DEADTIME = 3
 local HDRSIZE = 20
 
+local FLAGS = {
+	INSTANCE_REGISTRATION	= 0x01,
+	NEW_INDEX		= 0x02,
+	ANY_INDEX		= 0x04,
+	NON_DEFAULT_CONTEXT	= 0x08,
+	NETWORK_BYTE_ORDER	= 0x10
+}
+
 local TYPE = {
 	_hdr		= 0,
 	open		= 1,
@@ -125,9 +133,9 @@ end
 local pdu = { enc = {}, dec = {} }
 
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.1
-pdu.enc_hdr = function (self, ptype, payload, flags)
-	flags = bit32.bor(flags and flags or 0x00, 0x10)
-	return struct.pack(">BBBBIIII", 1, ptype, flags, 0, self.sessionID, 0, 0, payload:len()) .. payload
+pdu.enc_hdr = function (self, t)
+	local flags = bit32.bor(t.flags and t.flags or 0x00, FLAGS.NETWORK_BYTE_ORDER)
+	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, self._sessionID, 0, 0, t.payload:len()) .. t.payload
 end
 
 pdu.dec_hdr = function (self, pkt)
@@ -144,13 +152,17 @@ pdu.dec_hdr = function (self, pkt)
 end
 
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
-pdu.enc[TYPE.open] = function (self, name, deadtime)
-	return pdu.enc_hdr(self, TYPE.open, struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc.objectid({}) .. val.enc.octetstring(name))
+pdu.enc[TYPE.open] = function (self, t)
+	local deadtime = t.deadtime or DEADTIME
+	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc.objectid({}) .. val.enc.octetstring(t.name)
+	return pdu.enc_hdr(self, {["type"]=TYPE.open, payload=payload})
 end
 
-pdu.enc[TYPE.close] = function (self, reason)
-	reason = reason or REASON.other
-	return pdu.enc_hdr(self, TYPE.close, struct.pack(">B", reason) .. "\0\0\0")
+pdu.enc[TYPE.close] = function (self, t)
+	t = t or {}
+	local reason = t.reason or REASON.other
+	local payload = struct.pack(">B", reason) .. "\0\0\0"
+	return pdu.enc_hdr(self, {["type"]=TYPE.close, payload=payload})
 end
 
 pdu.dec[TYPE.close] = function (self, res, pkt)
@@ -159,12 +171,20 @@ pdu.dec[TYPE.close] = function (self, res, pkt)
 	return res
 end
 
-pdu.enc[TYPE.indexAllocate] = function (self, vtype, name)
-	return pdu.enc_hdr(self, TYPE.indexAllocate, val.enc.varbind(vtype, name))
+pdu.enc[TYPE.indexAllocate] = function (self, t)
+	local payload = ""
+	for i, v in ipairs(t) do
+		payload = payload .. val.enc.varbind(v.type, v.name)
+	end
+	return pdu.enc_hdr(self, {["type"]=TYPE.indexAllocate, payload=payload, flags=t.flags})
 end
 
-pdu.enc[TYPE.indexDeallocate] = function (self, vtype, name, data)
-	return pdu.enc_hdr(self, TYPE.indexDeallocate, val.enc.varbind(vtype, name, data))
+pdu.enc[TYPE.indexDeallocate] = function (self, t)
+	local payload = ""
+	for i, v in ipairs(t) do
+		payload = payload .. val.enc.varbind(v.type, v.name, v.data)
+	end
+	return pdu.enc_hdr(self, {["type"]=TYPE.indexDeallocate, payload=payload, flags=t.flags})
 end
 
 pdu.dec[TYPE.response] = function (self, res, pkt)
@@ -184,7 +204,7 @@ pdu.dec[TYPE.response] = function (self, res, pkt)
 	return res
 end
 
-local M = { vbtype = VTYPE }
+local M = { type = VTYPE, flags = FLAGS }
 
 function M:session (t)
 	t = t or {}
@@ -196,7 +216,8 @@ function M:session (t)
 	t.path = t.path or "/var/agentx/master"
 	t.deadtime = t.deadtime or DEADTIME
 
-	self.sessionID = 0
+	self._sessionID = 0
+	self._indexes = {}
 
 	self.fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
 	local ok, err, e = socket.connect(self.fd, { family=socket.AF_UNIX, path=t.path })
@@ -205,7 +226,7 @@ function M:session (t)
 		return nil, err
 	end
 
-	M:send(pdu.enc[TYPE.open](self, t.name, t.deadtime))
+	M:send(pdu.enc[TYPE.open](self, t))
 	local r = poll.rpoll(self.fd, 100)
 	if r == 0 then
 		M:close()
@@ -218,32 +239,59 @@ function M:session (t)
 		return nil, "AgentX master returned error code " .. tostring(res.error)
 	end
 
-	self.sessionID = res._hdr.sessionID
+	self._sessionID = res._hdr.sessionID
 
 	return self
 end
 
 function M:close ()
-	if self.sessionID ~= nil then
+	for i=#self._indexes,1,-1 do
+		M:index_deallocate(self._indexes[i])
+	end
+	if self._sessionID ~= nil then
 		M:send(pdu.enc[TYPE.close](self))
 		local res = M:recv()
 		if res.error ~= ERROR.noAgentXError then
 			return false, "AgentX master returned error code " .. tostring(res.error)
 		end
-		self.sessionID = nil
+		self._sessionID = nil
 	end
 	if self.fd ~= nil then
-		unistd.close(self_.fd)
+		unistd.close(self.fd)
 		self.fd = nil
 	end
 	return true
 end
 
-function M:index (vtype, name)
-	M:send(pdu.enc[TYPE.indexAllocate](self, vtype, name))
+function M:index_allocate (t)
+	if t.name then
+		t = {t}
+	end
+	M:send(pdu.enc[TYPE.indexAllocate](self, t))
 	local res = M:recv()
 	if res.error ~= ERROR.noAgentXError then
 		return nil, "AgentX master returned error code " .. tostring(res.error)
+	end
+	for i, v in ipairs(res.varbind) do
+		table.insert(self._indexes, v)
+	end
+	return res
+end
+
+function M:index_deallocate (t)
+	if t.name then
+		t = {t}
+	end
+	M:send(pdu.enc[TYPE.indexDeallocate](self, t))
+	local res = M:recv()
+	if res.error ~= ERROR.noAgentXError then
+		return nil, "AgentX master returned error code " .. tostring(res.error)
+	end
+	for i, v in pairs(self._indexes) do
+		if table.concat(t.name, ".") == table.concat(v.name, ".") and t.data == v.data then
+			table.remove(self._indexes, i)
+			break
+		end
 	end
 	return res
 end
