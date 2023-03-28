@@ -74,11 +74,7 @@ function val.dec.objectid (pkt)
 	pkt = pkt:sub(5)
 	local v = {struct.unpack(">" .. string.rep("I", len), pkt)}
 	if prefix > 0 then
-		table.insert(v, 1)
-		table.insert(v, 3)
-		table.insert(v, 6)
-		table.insert(v, 1)
-		table.insert(v, prefix)
+		v = {1,3,6,1,prefix,unpack(v)}
 	end
 	return pkt:sub(1 + 4 * len), v, include
 end
@@ -287,10 +283,12 @@ function M:index_deallocate (t)
 	if res.error ~= ERROR.noAgentXError then
 		return nil, "AgentX master returned error code " .. tostring(res.error)
 	end
-	for i, v in pairs(self._indexes) do
-		if table.concat(t.name, ".") == table.concat(v.name, ".") and t.data == v.data then
-			table.remove(self._indexes, i)
-			break
+	for ti, tt in ipairs(t) do
+		for i, v in ipairs(self._indexes) do
+			if table.concat(tt.name, ".") == table.concat(v.name, ".") and tt.data == v.data then
+				table.remove(self._indexes, i)
+				break
+			end
 		end
 	end
 	return res
