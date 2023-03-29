@@ -41,8 +41,8 @@ local PTYPE = {
 }
 
 local VTYPE = {
-	_VarBind		= 0,
-	SearchRange		= -1,
+	_SearchRange		= -2,
+	_VarBind		= -1,
 	Integer			= 2,
 	OctetString		= 4,
 	Null			= 5,
@@ -96,12 +96,15 @@ val.dec[VTYPE.ObjectIdentifer] = function (pkt)
 	return pkt:sub(1 + 4 * len), v, include
 end
 
-val.enc[VTYPE.SearchRange] = function (t)
+val.enc[VTYPE._SearchRange] = function (t)
 	return val.objectid(t.start, t.include) .. val.objectid(t["end"])
 end
 
-val.dec[VTYPE.SearchRange] = function (pkt)
-	error("nyi")
+val.dec[VTYPE._SearchRange] = function (pkt)
+	local vstart, include, vend
+	pkt, vstart, include = val.dec[VTYPE._VarBind](pkt)
+	pkt, venv = val.dec[VTYPE._VarBind](pkt)
+	return pkt, { start = vstart, include = include, ["end"] = vend }
 end
 
 val.enc[VTYPE.OctetString] = function (v)
@@ -260,30 +263,26 @@ function M:session (t)
 
 	self._producer = M:_producer_co()
 
-	local cb = function (r)
-		if r.error ~= ERROR.noAgentXError then
-			error("AgentX master returned error code " .. tostring(r.error))
-		end
-		self._sessionID = r._hdr.sessionID
-	end
-
-	M:_request(pdu.enc[PTYPE.open](self, t), cb)
-	M:process()
-	assert(self._sessionID)
-
-local status, result = coroutine.resume(co)
+	local status, result = M:_request(pdu.enc[PTYPE.open](self, t))
 	if not status then
 		error(result)
 	end
+	if result.error ~= ERROR.noAgentXError then
+		error("AgentX master returned error code " .. tostring(result.error))
+	end
+	self._sessionID = result._hdr.sessionID
+
 	return self
 end
 
 function M:close ()
 	if self._sessionID ~= nil then
-		M:_send(pdu.enc[PTYPE.close](self))
-		local res = M:_recv()
-		if res and res.error ~= ERROR.noAgentXError then
-			return false, "AgentX master returned error code " .. tostring(res.error)
+		local status, result = M:_request(pdu.enc[PTYPE.close](self))
+		if not status then
+			error(result)
+		end
+		if result and result.error ~= ERROR.noAgentXError then
+			return false, "AgentX master returned error code " .. tostring(result.error)
 		end
 		self._sessionID = nil
 	end
@@ -299,13 +298,12 @@ function M:process ()
 	if not status then
 		error(result)
 	end
-	if not result then return end
-	if result._hdr.type == PTYPE.response then
+	if result and result._hdr.type == PTYPE.response then
 		local co = self._requests[result._hdr.packetID]
 		self._requests[result._hdr.packetID] = nil
-		coroutine.resume(co, result)	-- discard results they are not for us
+		coroutine.resume(co, result)
 	else
-		error("nyi")
+		coroutine.resume(self._consumer, result)
 	end
 end
 
@@ -358,32 +356,44 @@ end
 
 function M:_request (msg, cb)
 	assert(socket.send(self.fd, msg) == msg:len())
-	local co = cb and cb or function (...) return ... end
+
+	local status, result
+	local function _cb (...)
+		status = true
+		result = ...
+	end
+	local co = cb and cb or _cb
 	if type(co) == "function" then co = coroutine.create(co) end
+
 	self._requests[self._packetID] = co
 	self._packetID = self._packetID + 1
+
+	if not cb then
+		while coroutine.status(co) ~= "dead" do
+			M:process()
+		end
+		return status, result
+	end
+
 	return co
 end
 
 function M:register (t)
-	M:_send(pdu.enc[PTYPE.register](self, t))
-	return M:_recv()
+	return M:_request(pdu.enc[PTYPE.register](self, t))
 end
 
 function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	M:_send(pdu.enc[PTYPE.indexAllocate](self, t))
-	return M:_recv()
+	return M:_request(pdu.enc[PTYPE.indexAllocate](self, t))
 end
 
 function M:index_deallocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	M:_send(pdu.enc[PTYPE.indexDeallocate](self, t))
-	return M:_recv()
+	return M:_request(pdu.enc[PTYPE.indexDeallocate](self, t))
 end
 
 return M

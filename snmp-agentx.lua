@@ -29,27 +29,36 @@ local iftable_ifindex = {1,3,6,1,2,1,2,2,1,1}
 local session = agentx:session({name="EBM"})
 local ifindex
 while not ifindex do
-	local res
+	local status, result
 
-	res = session:index_allocate({["type"]=agentx.type.integer, name=iftable_ifindex, flags=agentx.flags.NEW_INDEX})
-	if res.error ~= agentx.error.noAgentXError then
-		error(res.error)
+	status, result = session:index_allocate({["type"]=agentx.type.Integer, name=iftable_ifindex, flags=agentx.flags.NEW_INDEX})
+	if not status then
+		error(result)
+	end
+	if result.error ~= agentx.error.noAgentXError then
+		error(result.error)
 	end
 
-	ifindex = res.varbind[1].data
+	ifindex = result.varbind[1]
 
 	local iftable = {unpack(iftable_ifindex)}
-	table.insert(iftable, ifindex)
+	table.insert(iftable, ifindex.data)
 
-	res = session:register({range_subid=#iftable - 1, subtree=iftable, upper_bound=22})
-	if res.err == agentx.error.duplicateRegistration then
-		res = session:index_deallocate({["type"]=agentx.type.integer, name=iftable_ifindex, data=ifindex})
-		if res.error ~= agentx.error.noAgentXError then
-			error(res.error)
+	status, result = session:register({range_subid=#iftable - 1, subtree=iftable, upper_bound=22})
+	if not status then
+		error(result)
+	end
+	if result.err == agentx.error.duplicateRegistration then
+		status, result = session:index_deallocate(ifindex)
+		if not status then
+			error(result)
+		end
+		if result.error ~= agentx.error.noAgentXError then
+			error(result.error)
 		end
 		ifindex = nil
-	elseif res.error ~= agentx.error.noAgentXError then
-		error(res.error)
+	elseif result.error ~= agentx.error.noAgentXError then
+		error(result.error)
 	end
 end
 
@@ -57,7 +66,7 @@ local fds = {
 	[session.fd] = { events = { IN = true } }
 }
 while poll.poll(fds) do
-	for k, v in pairs(res) do
+	for k, v in pairs(fds) do
 		if v.revents.IN then
 			if k == session.fd then
 				session:process()
