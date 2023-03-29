@@ -4,8 +4,9 @@
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
 
-local dir = arg[0]:match("^(.-/?)[^/]+.lua$")
+local poll = require "posix.poll"
 
+local dir = arg[0]:match("^(.-/?)[^/]+.lua$")
 local status, agentx = pcall(function () return require "agentx" end)
 if not status then
 	agentx = assert(loadfile(dir .. "agentx.lua"))()
@@ -19,6 +20,10 @@ if #arg < 2 then
 	io.stderr:write("Usage: " .. arg[0] .. " IFACE MACADDR\n")
 	os.exit(1)
 end
+
+-- local session = ebm:session({iface=arg[1], addr=arg[2]})
+-- session:send({reg='linktime'})
+-- print(session:recv())
 
 local iftable_ifindex = {1,3,6,1,2,1,2,2,1,1}
 local session = agentx:session({name="EBM"})
@@ -47,8 +52,25 @@ while not ifindex do
 		error(res.error)
 	end
 end
-session:close()
 
--- local session = ebm:session({iface=arg[1], addr=arg[2]})
--- session:send({reg='linktime'})
--- print(session:recv())
+local fds = {
+	[session.fd] = { events = { IN = true } }
+}
+while poll.poll(fds) do
+	for k, v in pairs(res) do
+		if v.revents.IN then
+			if k == session.fd then
+				session:process()
+			else
+				ebm:process()
+			end
+			v.revents.IN = false
+		elseif v.revents.HUP then
+			error("nyi")
+		else
+			error("nyi")
+		end
+	end
+end
+
+session:close()

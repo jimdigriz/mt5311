@@ -5,8 +5,10 @@
 -- https://datatracker.ietf.org/doc/html/rfc2741
 
 local bit32 = require "bit32"
-local socket = require "posix.sys.socket"
+local errno = require "posix.errno"
+local fcntl = require "posix.fcntl"
 local poll = require "posix.poll"
+local socket = require "posix.sys.socket"
 local unistd = require "posix.unistd"
 if socket.AF_PACKET == nil then error("AF_PACKET not available, did you install lua-posix 35.1 or later?") end
 -- https://github.com/iryont/lua-struct
@@ -39,9 +41,21 @@ local PTYPE = {
 }
 
 local VTYPE = {
-	integer			= 2,
-	octetstring		= 4,
-	objectid		= 6
+	_VarBind		= 0,
+	SearchRange		= -1,
+	Integer			= 2,
+	OctetString		= 4,
+	Null			= 5,
+	ObjectIdentifer		= 6,
+	IpAddress		= 64,
+	Counter32		= 65,
+	Gauge32			= 66,
+	TimeTicks		= 67,
+	Opaque			= 68,
+	Counter64		= 67,
+	noSuchobject		= 128,
+	noSuchInstance		= 129,
+	endOfMibView		= 130
 }
 
 local ERROR = {
@@ -60,7 +74,7 @@ local REASON = {
 
 local val = { enc = {}, dec = {} }
 
-function val.enc.objectid (v, i)
+val.enc[VTYPE.ObjectIdentifer] = function (v, i)
 	local prefix = 0
 	if #v > 4 and v[1] == 1 and v[2] == 3 and v[3] == 6 and v[4] == 1 then
 		prefix = v[5]
@@ -72,7 +86,7 @@ function val.enc.objectid (v, i)
 	return struct.pack(">BBBB" .. string.rep("I", #v), #v, prefix, include, 0, unpack(v))
 end
 
-function val.dec.objectid (pkt)
+val.dec[VTYPE.ObjectIdentifer] = function (pkt)
 	local len, prefix, include, reserved = struct.unpack(">BBBB", pkt)
 	pkt = pkt:sub(5)
 	local v = {struct.unpack(">" .. string.rep("I", len), pkt)}
@@ -82,50 +96,50 @@ function val.dec.objectid (pkt)
 	return pkt:sub(1 + 4 * len), v, include
 end
 
-function val.enc.searchrange (t)
+val.enc[VTYPE.SearchRange] = function (t)
 	return val.objectid(t.start, t.include) .. val.objectid(t["end"])
 end
 
-function val.dec.searchrange (pkt)
+val.dec[VTYPE.SearchRange] = function (pkt)
 	error("nyi")
 end
 
-function val.enc.octetstring (v)
+val.enc[VTYPE.OctetString] = function (v)
 	v = v or ""
 	return struct.pack(">I", v:len()) .. v .. string.rep("\0", 4 - v:len() % 4)
 end
 
-function val.dec.octetstring (pkt)
+val.dec[VTYPE.OctetString] = function (pkt)
 	local len = struct.unpack(">I", pkt)
 	return pkt:sub(5 + len + (4 - len % 4)), pkt:sub(5, len)
 end
 
-function val.enc.varbind (t)
+val.enc[VTYPE._VarBind] = function (t)
 	local data
-	if t.type == VTYPE.integer then
+	if t.type == VTYPE.Integer then
 		data = struct.pack(">I", t.data or 0)
-	elseif t.type == VTYPE.octetstring then
-		data = val.enc.octetstring(t.data)
+	elseif t.type == VTYPE.OctetString then
+		data = val.enc[VTYPE.OctetString](t.data)
 	else
 		error("nyi")
 	end
-	return struct.pack(">H", t.type) .. "\0\0" .. val.enc.objectid(t.name) .. data
+	return struct.pack(">H", t.type) .. "\0\0" .. val.enc[VTYPE.ObjectIdentifer](t.name) .. data
 end
 
-function val.dec.varbind (pkt)
+val.dec[VTYPE._VarBind] = function (pkt)
 	local vtype = struct.unpack(">H", pkt)
 	pkt = pkt:sub(5)
 
-	local pkt, name, include = val.dec.objectid(pkt)
+	local pkt, name, include = val.dec[VTYPE.ObjectIdentifer](pkt)
 	local data
 
-	if vtype == VTYPE.integer then
+	if vtype == VTYPE.Integer then
 		data = struct.unpack(">I", pkt)
 		pkt = pkt:sub(5)
-	elseif vtype == VTYPE.octetstring then
-		pkt, data = val.dec.octetstring(pkt)
-	elseif vtype == VTYPE.objectid then
-		pkt, data = val.dec.objectid(pkt)
+	elseif vtype == VTYPE.OctetString then
+		pkt, data = val.dec[VTYPE.OctetString](pkt)
+	elseif vtype == VTYPE.ObjectIdentifer then
+		pkt, data = val.dec[VTYPE.ObjectIdentifer](pkt)
 	else
 		error("nyi " .. tostring(vtype))
 	end
@@ -134,12 +148,10 @@ end
 
 local pdu = { enc = {}, dec = {} }
 
--- https://datatracker.ietf.org/doc/html/rfc2741#section-6.1
 pdu.enc_hdr = function (s, t)
 	local flags = bit32.bor(t.flags and t.flags or 0x00, FLAGS.NETWORK_BYTE_ORDER)
-	local packetID = s._packetID
-	s._packetID = packetID + 1
-	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, s._sessionID, 0, packetID, t.payload:len()) .. t.payload
+	local sessionID = s._sessionID or 0
+	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, sessionID, 0, s._packetID, t.payload:len()) .. t.payload
 end
 
 pdu.dec_hdr = function (pkt)
@@ -158,7 +170,7 @@ end
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
 pdu.enc[PTYPE.open] = function (s, t)
 	local deadtime = t.deadtime or 0
-	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc.objectid({}) .. val.enc.octetstring(t.name)
+	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc[VTYPE.ObjectIdentifer]({}) .. val.enc[VTYPE.OctetString](t.name)
 	return pdu.enc_hdr(s, {["type"]=PTYPE.open, payload=payload})
 end
 
@@ -169,17 +181,17 @@ pdu.enc[PTYPE.close] = function (s, t)
 	return pdu.enc_hdr(s, {["type"]=PTYPE.close, payload=payload})
 end
 
-pdu.dec[PTYPE.close] = function (res, pkt)
+pdu.dec[PTYPE.close] = function (pkt, res)
 	local reason = struct.unpack(">B", pkt)
 	res.reason = reason
-	return res
+	return pkt:sub(2), res
 end
 
 pdu.enc[PTYPE.register] = function (s, t)
 	local timeout = t.timeout or 0
 	local priority = t.priority or 127
 	local range_subid = t.range_subid or 0
-	local payload = struct.pack(">BBBB", timeout, priority, range_subid, 0) .. val.enc.objectid(t.subtree)
+	local payload = struct.pack(">BBBB", timeout, priority, range_subid, 0) .. val.enc[VTYPE.ObjectIdentifer](t.subtree)
 	if range_subid > 0 then
 		payload = payload .. struct.pack(">I", t.upper_bound)
 	end
@@ -189,7 +201,7 @@ end
 pdu.enc[PTYPE.indexAllocate] = function (s, t)
 	local payload = ""
 	for i, v in ipairs(t.varbind) do
-		payload = payload .. val.enc.varbind(v)
+		payload = payload .. val.enc[VTYPE._VarBind](v)
 	end
 	return pdu.enc_hdr(s, {["type"]=PTYPE.indexAllocate, payload=payload, flags=t.flags})
 end
@@ -197,12 +209,12 @@ end
 pdu.enc[PTYPE.indexDeallocate] = function (s, t)
 	local payload = ""
 	for i, v in ipairs(t.varbind) do
-		payload = payload .. val.enc.varbind(v)
+		payload = payload .. val.enc[VTYPE._VarBind](v)
 	end
 	return pdu.enc_hdr(s, {["type"]=PTYPE.indexDeallocate, payload=payload, flags=t.flags})
 end
 
-pdu.dec[PTYPE.response] = function (self, res, pkt)
+pdu.dec[PTYPE.response] = function (pkt, res)
 	local sysUpTime, perror, index = struct.unpack(">IHH", pkt)
 	res.sysUpTime = sysUpTime
 	res.error = perror
@@ -212,11 +224,11 @@ pdu.dec[PTYPE.response] = function (self, res, pkt)
 	pkt = pkt:sub(9)
 	while pkt:len() > 0 do
 		local varbind
-		pkt, varbind = val.dec.varbind(pkt)
+		pkt, varbind = val.dec[VTYPE._VarBind](pkt)
 		table.insert(res.varbind, varbind)
 	end
 
-	return res
+	return pkt, res
 end
 
 local M = { type = VTYPE, flags = FLAGS, error = ERROR }
@@ -231,8 +243,9 @@ function M:session (t)
 	t.path = t.path or "/var/agentx/master"
 	t.deadtime = 0
 
-	self._sessionID = 0
+	self._sessionID = nil
 	self._packetID = 0
+	self._requests = {}
 
 	self.fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
 	local ok, err, e = socket.connect(self.fd, { family=socket.AF_UNIX, path=t.path })
@@ -241,28 +254,34 @@ function M:session (t)
 		return nil, err
 	end
 
-	M:send(pdu.enc[PTYPE.open](self, t))
-	local r = poll.rpoll(self.fd, 100)
-	if r == 0 then
-		M:close()
-		return nil, "no response"
+	-- https://github.com/luaposix/luaposix/issues/354
+--	local fdflags = fcntl.fcntl(self.fd, fcntl.F_GETFL)
+--	assert(fcntl.fcntl(self.fd, fcntl.F_SETFL, bit32.bor(fdflags, fcntl.O_NONBLOCK)))
+
+	self._producer = M:_producer_co()
+
+	local cb = function (r)
+		if r.error ~= ERROR.noAgentXError then
+			error("AgentX master returned error code " .. tostring(r.error))
+		end
+		self._sessionID = r._hdr.sessionID
 	end
 
-	local res = M:recv()
-	if res.error ~= ERROR.noAgentXError then
-		M:close()
-		return nil, "AgentX master returned error code " .. tostring(res.error)
+	M:_request(pdu.enc[PTYPE.open](self, t), cb)
+	M:process()
+	assert(self._sessionID)
+
+local status, result = coroutine.resume(co)
+	if not status then
+		error(result)
 	end
-
-	self._sessionID = res._hdr.sessionID
-
 	return self
 end
 
 function M:close ()
 	if self._sessionID ~= nil then
-		M:send(pdu.enc[PTYPE.close](self))
-		local res = M:recv()
+		M:_send(pdu.enc[PTYPE.close](self))
+		local res = M:_recv()
 		if res and res.error ~= ERROR.noAgentXError then
 			return false, "AgentX master returned error code " .. tostring(res.error)
 		end
@@ -275,57 +294,96 @@ function M:close ()
 	return true
 end
 
+function M:process ()
+	local status, result = coroutine.resume(self._producer)
+	if not status then
+		error(result)
+	end
+	if not result then return end
+	if result._hdr.type == PTYPE.response then
+		local co = self._requests[result._hdr.packetID]
+		self._requests[result._hdr.packetID] = nil
+		coroutine.resume(co, result)	-- discard results they are not for us
+	else
+		error("nyi")
+	end
+end
+
+function M:_producer_co ()
+	return coroutine.create(function ()
+		while true do
+			local hdrpkt = ""
+			while true do
+				local buf, err = socket.recv(self.fd, HDRSIZE - hdrpkt:len())
+				if not buf then
+					if err == errno.EAGAIN then
+						coroutine.yield()
+					else
+						error("recv() " .. err)
+					end
+				else
+					if buf:len() == 0 then error("closed") end
+					hdrpkt = hdrpkt .. buf
+					if hdrpkt:len() == 20 then break end
+					coroutine.yield()
+				end
+			end
+
+			local hdr = pdu.dec_hdr(hdrpkt)
+			assert(not self._sessionID or hdr.sessionID == self._sessionID)
+
+			local payload = ""
+			while true do
+				local buf, err = socket.recv(self.fd, hdr.payload_length - payload:len())
+				if not buf then
+					if err == errno.EAGAIN then
+						coroutine.yield()
+					else
+						error("recv() " .. err)
+					end
+				else
+					if buf:len() == 0 then error("closed") end
+					payload = payload .. buf
+					if payload:len() == hdr.payload_length then break end
+					coroutine.yield()
+				end
+			end
+
+			local pkt, res = pdu.dec[hdr.type](payload, { _hdr = hdr })
+			assert(pkt:len() == 0)
+			coroutine.yield(res)
+		end
+	end)
+end
+
+function M:_request (msg, cb)
+	assert(socket.send(self.fd, msg) == msg:len())
+	local co = cb and cb or function (...) return ... end
+	if type(co) == "function" then co = coroutine.create(co) end
+	self._requests[self._packetID] = co
+	self._packetID = self._packetID + 1
+	return co
+end
+
 function M:register (t)
-	M:send(pdu.enc[PTYPE.register](self, t))
-	return M:recv()
+	M:_send(pdu.enc[PTYPE.register](self, t))
+	return M:_recv()
 end
 
 function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	M:send(pdu.enc[PTYPE.indexAllocate](self, t))
-	return M:recv()
+	M:_send(pdu.enc[PTYPE.indexAllocate](self, t))
+	return M:_recv()
 end
 
 function M:index_deallocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	M:send(pdu.enc[PTYPE.indexDeallocate](self, t))
-	return M:recv()
-end
-
-function M:send (msg)
-	assert(socket.send(self.fd, msg) == msg:len())
-end
-
-function M:recv ()
-	-- stream socket so keep pulling...
-	local hdr = ""
-	while true do
-		local buf = socket.recv(self.fd, HDRSIZE - hdr:len())
-		if buf:len() == 0 then
-			self._sessionID = nil
-			self.fd = nil
-			return nil, "connection closed"
-		end
-		hdr = hdr .. buf
-		if hdr:len() == 20 then break end
-	end
-
-	local res = { _hdr = pdu.dec_hdr(hdr) }
-
-	-- for now this is all we support
-	assert(res._hdr.type == PTYPE.response)
-
-	local payload = ""
-	while true do
-		payload = payload .. socket.recv(self.fd, res._hdr.payload_length - payload:len())
-		if payload:len() == res._hdr.payload_length then break end
-	end
-
-	return pdu.dec[res._hdr.type](self, res, payload)
+	M:_send(pdu.enc[PTYPE.indexDeallocate](self, t))
+	return M:_recv()
 end
 
 return M
