@@ -62,18 +62,24 @@ while not ifindex do
 	end
 end
 
+local running = true
 local fds = {
 	[session.fd] = { events = { IN = true } }
 }
-while poll.poll(fds) do
+while running and poll.poll(fds) do
 	for k, v in pairs(fds) do
+		local status, err
 		if v.revents.IN then
 			if k == session.fd then
-				session:next()
+				status, err = session:next()
 			else
-				ebm:next()
+				status, err = ebm:next()
 			end
-			v.revents.IN = false
+			if status then
+				v.revents.IN = false
+			else
+				running = false
+			end
 		elseif v.revents.HUP then
 			error("nyi")
 		else

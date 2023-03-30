@@ -350,9 +350,16 @@ end
 function M:next ()
 	local status, result = coroutine.resume(self._producer)
 	if not status then
-		error(result)
+		if type(result) ~= "table" then
+			result = { reason = result }
+		end
+		if result.reason == "closed" then
+			self._sessionID = nil
+			M:close()
+		end
+		return false, result.reason
 	end
-	if not result then return end
+	if not result then return true end
 	if result._hdr.type == PTYPE.Response then
 		local co = self._requests[result._hdr.packetID]
 		self._requests[result._hdr.packetID] = nil
@@ -371,6 +378,7 @@ function M:next ()
 		end
 		coroutine.resume(self._consumer, result, cb)
 	end
+	return true
 end
 
 function M:_producer_co ()
@@ -386,7 +394,7 @@ function M:_producer_co ()
 						error("recv() " .. err)
 					end
 				else
-					if buf:len() == 0 then error("closed") end
+					if buf:len() == 0 then error({reason="closed"}) end
 					hdrpkt = hdrpkt .. buf
 					if hdrpkt:len() == 20 then break end
 					coroutine.yield()
@@ -406,7 +414,7 @@ function M:_producer_co ()
 						error("recv() " .. err)
 					end
 				else
-					if buf:len() == 0 then error("closed") end
+					if buf:len() == 0 then error({reason="closed"}) end
 					payload = payload .. buf
 					if payload:len() == hdr.payload_length then break end
 					coroutine.yield()
