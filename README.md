@@ -119,7 +119,7 @@ To use a basic Ethernet Boot & Management (EBM) protocol dissector:
 
 ### Sample Data
 
-[`dump-soc.txt.gz`](./dump-soc.txt.gz) is the output of the "Dump SOC" button whilst [`dump-soc.pcap.gz`](./dump-soc.pcap.gz) is a packet capture during running it.
+[`dump-soc.txt.gz`](./dump-soc.txt.gz) is the output of the "Dump SOC" button whilst [`dump-soc.pcap.gz`](./dump-soc.pcap.gz) is a packet capture during running it; [`register.map`](./register.map) is a listing of the register addresses and their purpose manually derived from these two files.
 
 **N.B** packet capture includes connecting to the SFP and having 'Port Status' section open and running for a while
 
