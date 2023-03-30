@@ -223,6 +223,32 @@ pdu.dec[PTYPE.Close] = function (pkt, res)
 	return pkt:sub(2), res
 end
 
+pdu.dec[PTYPE.Get] = function (pkt, res)
+	res.gr = {}
+	while pkt:len() > 0 do
+		local gr
+		pkt, gr = val.dec[VTYPE._VarBind](pkt)
+		table.insert(res.gr, gr)
+	end
+	return pkt, res
+end
+
+pdu.dec[PTYPE.GetNext] = pdu.dec[PTYPE.Get]
+
+pdu.dec[PTYPE.GetBulk] = function (pkt, res)
+	local non_repeaters, max_repetitions = struct.unpack(">HH", pkt)
+	pkt = pkt:sub(5)
+
+	res.gr = {}
+	while pkt:len() > 0 do
+		local gr
+		pkt, gr = val.dec[VTYPE._VarBind](pkt)
+		table.insert(res.gr, gr)
+	end
+
+	return pkt, res
+end
+
 pdu.enc[PTYPE.Register] = function (s, t)
 	local timeout = t.timeout or 0
 	local priority = t.priority or 127
@@ -260,12 +286,13 @@ end
 
 pdu.dec[PTYPE.Response] = function (pkt, res)
 	local sysUpTime, perror, index = struct.unpack(">IHH", pkt)
+	pkt = pkt:sub(9)
+
 	res.sysUpTime = sysUpTime
 	res.error = perror
 	res.index = index
 
 	res.varbind = {}
-	pkt = pkt:sub(9)
 	while pkt:len() > 0 do
 		local varbind
 		pkt, varbind = val.dec[VTYPE._VarBind](pkt)
