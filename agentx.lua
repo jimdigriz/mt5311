@@ -156,9 +156,10 @@ val.dec[VTYPE._VarBind] = function (pkt)
 	local vtype = struct.unpack(">H", pkt)
 	pkt = pkt:sub(5)
 
-	local pkt, name, include = val.dec[VTYPE.ObjectIdentifer](pkt)
-	local data
+	local name, include
+	pkt, name, include = val.dec[VTYPE.ObjectIdentifer](pkt)
 
+	local data
 	if vtype == VTYPE.Integer then
 		data = struct.unpack(">I", pkt)
 		pkt = pkt:sub(5)
@@ -169,6 +170,7 @@ val.dec[VTYPE._VarBind] = function (pkt)
 	else
 		error("nyi " .. tostring(vtype))
 	end
+
 	return pkt, { ["type"] = vtype, name = name, data = data }
 end
 
@@ -176,12 +178,12 @@ local pdu = { enc = {}, dec = {} }
 
 pdu.enc_hdr = function (s, t)
 	local flags = bit32.bor(t.flags and t.flags or 0x00, FLAGS.NETWORK_BYTE_ORDER)
-	local sessionID = s._sessionID or 0
 	local context = ""
-	if bit32.band(flags, FLAGS.NON_DEFAULT_CONTEXT) ~= 0 then
-		context = val.enc[VTYPE.OctetString](t.context or "")
+	if s.context then
+		flags = bit32.bor(flags, FLAGS.NON_DEFAULT_CONTEXT)
+		context = val.enc[VTYPE.OctetString](s.context)
 	end
-	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, sessionID, 0, s._packetID, t.payload:len()) .. context .. t.payload
+	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, s.sessionID or 0, s.transactionID or 0, s.packetID, t.payload:len()) .. context .. t.payload
 end
 
 pdu.dec_hdr = function (pkt)
@@ -227,7 +229,7 @@ pdu.dec[PTYPE.Get] = function (pkt, res)
 	res.gr = {}
 	while pkt:len() > 0 do
 		local gr
-		pkt, gr = val.dec[VTYPE._VarBind](pkt)
+		pkt, gr = val.dec[VTYPE.ObjectIdentifer](pkt)
 		table.insert(res.gr, gr)
 	end
 	return pkt, res
@@ -245,7 +247,7 @@ pdu.dec[PTYPE.GetBulk] = function (pkt, res)
 	res.gr = {}
 	while pkt:len() > 0 do
 		local gr
-		pkt, gr = val.dec[VTYPE._VarBind](pkt)
+		pkt, gr = val.dec[VTYPE.ObjectIdentifer](pkt)
 		table.insert(res.gr, gr)
 	end
 
@@ -333,27 +335,29 @@ function M:session (t)
 --	assert(fcntl.fcntl(self.fd, fcntl.F_SETFL, bit32.bor(fdflags, fcntl.O_NONBLOCK)))
 
 	self._producer = M:_producer_co()
-	local function _cb (result, cb)
+	self._consumer = function (result, cb)
 		local status, response
 		if type(t.cb) == "function" then
 			status, response = pcall(function() return t.cb(result) end)
 		elseif type(t.cb) == "thread" then
 			status, response = coroutine.resume(t.cb, result)
 		end
-		if status then
+		if status and response then
 			cb(response)
 		else
 			cb({ ["error"] = ERROR.processingError })
 		end
 	end
 
-	local status, result = M:_request(pdu.enc[PTYPE.Open](self, t))
+	local session = { sessionID=0, packetID=self._packetID }
+	local status, result = M:_request(pdu.enc[PTYPE.Open](session, t))
 	if not status then
 		error(result)
 	end
 	if result.error ~= ERROR.noAgentXError then
 		error("AgentX master returned error code " .. tostring(result.error))
 	end
+
 	self._sessionID = result._hdr.sessionID
 
 	return self
@@ -361,7 +365,8 @@ end
 
 function M:close ()
 	if self._sessionID ~= nil then
-		local status, result = M:_request(pdu.enc[PTYPE.Close](self))
+		local session = { sessionID=self._sessionID, packetID=self._packetID }
+		local status, result = M:_request(pdu.enc[PTYPE.Close](session))
 		if not status then
 			error(result)
 		end
@@ -395,18 +400,10 @@ function M:next ()
 		self._requests[result._hdr.packetID] = nil
 		coroutine.resume(co, result)
 	else
-		local session = { sessionID = result.sessionID, packetID = result.packetID }
-		local cb = function (response)
-			response._hdr = nil
-			if bit32.band(result._hdr.flags, FLAGS.NON_DEFAULT_CONTEXT) ~= 0 then
-				response._hdr = {
-					flags	= FLAGS.NON_DEFAULT_CONTEXT,
-					context	= result._hdr.context
-				}
-			end
-			M:_send(pdu.enc[PTYPE.Response](session, response))
+		local cb = function (res)
+			M:_send(pdu.enc[PTYPE.Response](result._hdr, res))
 		end
-		coroutine.resume(self._consumer, result, cb)
+		self._consumer(result, cb)
 	end
 	return true
 end
@@ -432,7 +429,7 @@ function M:_producer_co ()
 			end
 
 			local hdr = pdu.dec_hdr(hdrpkt)
-			assert(not self._sessionID or hdr.sessionID == self._sessionID)
+			assert(self._sessionID == nil or hdr.sessionID == self._sessionID)
 
 			local payload = ""
 			while true do
@@ -456,7 +453,7 @@ function M:_producer_co ()
 				assert(pkt:len() == 0)
 				coroutine.yield(res)
 			else
-				M:_send(pdu.enc[PTYPE.Response](self, { ["error"] = ERROR.parseError }))
+				M:_send(pdu.enc[PTYPE.Response](res._hdr, { ["error"] = ERROR.parseError }))
 				coroutine.yield()
 			end
 		end
@@ -492,21 +489,24 @@ function M:_request (msg, cb)
 end
 
 function M:register (t)
-	return M:_request(pdu.enc[PTYPE.Register](self, t))
+	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
+	return M:_request(pdu.enc[PTYPE.Register](session, t))
 end
 
 function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	return M:_request(pdu.enc[PTYPE.IndexAllocate](self, t))
+	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
+	return M:_request(pdu.enc[PTYPE.IndexAllocate](session, t))
 end
 
 function M:index_deallocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	return M:_request(pdu.enc[PTYPE.IndexDeallocate](self, t))
+	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
+	return M:_request(pdu.enc[PTYPE.IndexDeallocate](session, t))
 end
 
 return M

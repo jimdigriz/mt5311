@@ -25,8 +25,11 @@ end
 -- session:send({reg='linktime'})
 -- print(session:recv())
 
+local agentx_cb = function (request)
+	print(request)
+end
+local session = agentx:session({name="EBM", cb=agentx_cb})
 local iftable_ifindex = {1,3,6,1,2,1,2,2,1,1}
-local session = agentx:session({name="EBM"})
 local ifindex
 while not ifindex do
 	local status, result
