@@ -177,13 +177,19 @@ local pdu = { enc = {}, dec = {} }
 pdu.enc_hdr = function (s, t)
 	local flags = bit32.bor(t.flags and t.flags or 0x00, FLAGS.NETWORK_BYTE_ORDER)
 	local sessionID = s._sessionID or 0
-	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, sessionID, 0, s._packetID, t.payload:len()) .. t.payload
+	local context = ""
+	if bit32.band(flags, FLAGS.NON_DEFAULT_CONTEXT) ~= 0 then
+		context = val.enc[VTYPE.OctetString](t.context or "")
+	end
+	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, sessionID, 0, s._packetID, t.payload:len()) .. context .. t.payload
 end
 
 pdu.dec_hdr = function (pkt)
 	local version, ptype, flags, reserved, sessionID, transactionID, packetID, payload_length = struct.unpack(">BBBBIIII", pkt)
+	local context
 	if bit32.band(flags, FLAGS.NON_DEFAULT_CONTEXT) ~= 0 then
-		error("nyi")
+		pkt, context = val.dec[VTYPE.OctetString](pkt:sub(21))
+		assert(pkt:len() == 0)
 	end
 	return {
 		version		= version,
@@ -192,7 +198,8 @@ pdu.dec_hdr = function (pkt)
 		sessionID	= sessionID,
 		transactionID	= transactionID,
 		packetID	= packetID,
-		payload_length	= payload_length
+		payload_length	= payload_length,
+		context		= context
 	}
 end
 
@@ -303,7 +310,6 @@ function M:session (t)
 		elseif type(t.cb) == "thread" then
 			status, response = coroutine.resume(t.cb, result)
 		end
-
 		if status then
 			cb(response)
 		else
@@ -354,6 +360,13 @@ function M:next ()
 	else
 		local session = { sessionID = result.sessionID, packetID = result.packetID }
 		local cb = function (response)
+			response._hdr = nil
+			if bit32.band(result._hdr.flags, FLAGS.NON_DEFAULT_CONTEXT) ~= 0 then
+				response._hdr = {
+					flags	= FLAGS.NON_DEFAULT_CONTEXT,
+					context	= result._hdr.context
+				}
+			end
 			M:_send(pdu.enc[PTYPE.Response](session, response))
 		end
 		coroutine.resume(self._consumer, result, cb)
