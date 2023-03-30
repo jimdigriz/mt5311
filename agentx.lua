@@ -342,7 +342,7 @@ function M:session (t)
 		elseif type(t.cb) == "thread" then
 			status, response = coroutine.resume(t.cb, result)
 		end
-		if status and response then
+		if status and type(response) == "table" then
 			cb(response)
 		else
 			cb({ ["error"] = ERROR.processingError })
@@ -385,14 +385,11 @@ end
 function M:next ()
 	local status, result = coroutine.resume(self._producer)
 	if not status then
-		if type(result) ~= "table" then
-			result = { reason = result }
-		end
-		if result.reason == "closed" then
+		if result == "closed" then
 			self._sessionID = nil
 			M:close()
 		end
-		return false, result.reason
+		return false, result
 	end
 	if not result then return true end
 	if result._hdr.type == PTYPE.Response then
@@ -421,7 +418,7 @@ function M:_producer_co ()
 						error("recv() " .. err)
 					end
 				else
-					if buf:len() == 0 then error({reason="closed"}) end
+					if buf:len() == 0 then error("closed", 0) end
 					hdrpkt = hdrpkt .. buf
 					if hdrpkt:len() == 20 then break end
 					coroutine.yield()
@@ -441,7 +438,7 @@ function M:_producer_co ()
 						error("recv() " .. err)
 					end
 				else
-					if buf:len() == 0 then error({reason="closed"}) end
+					if buf:len() == 0 then error("closed", 0) end
 					payload = payload .. buf
 					if payload:len() == hdr.payload_length then break end
 					coroutine.yield()
