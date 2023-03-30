@@ -31,13 +31,24 @@ local FLAGS = {
 
 local PTYPE = {
 	_hdr			= 0,
-	open			= 1,
-	close			= 2,
-	register		= 3,
-	unregister		= 4,
-	indexAllocate		= 14,
-	indexDeallocate		= 15,
-	response		= 18
+	Open			= 1,
+	Close			= 2,
+	Register		= 3,
+	Unregister		= 4,
+	Get			= 5,
+	GetNext			= 6,
+	GetBulk			= 7,
+	TestSet			= 8,
+	CommitSet		= 9,
+	UndoSet			= 10,
+	CleanupSet		= 11,
+	Notify			= 12,
+	Ping			= 13,
+	IndexAllocate		= 14,
+	IndexDeallocate		= 15,
+	AddAgentCaps		= 16,
+	RemoveAgentCaps		= 17,
+	Response		= 18
 }
 
 local VTYPE = {
@@ -60,7 +71,19 @@ local VTYPE = {
 
 local ERROR = {
 	noAgentXError		= 0,
-	duplicateRegistration	= 263
+	openFailed		= 256,
+	notOpen			= 257,
+	indexWrongType		= 258,
+	indexAlreadyAllocated	= 259,
+	indexNoneAvailable	= 260,
+	indexNotAllocated	= 261,
+	unsupportedContext	= 262,
+	duplicateRegistration	= 263,
+	unknownRegistration	= 264,
+	unknownAgentCaps	= 265,
+	parseError		= 266,
+	requestDenied		= 267,
+	processingError		= 268
 }
 
 local REASON = {
@@ -159,6 +182,9 @@ end
 
 pdu.dec_hdr = function (pkt)
 	local version, ptype, flags, reserved, sessionID, transactionID, packetID, payload_length = struct.unpack(">BBBBIIII", pkt)
+	if bit32.band(flags, FLAGS.NON_DEFAULT_CONTEXT) ~= 0 then
+		error("nyi")
+	end
 	return {
 		version		= version,
 		["type"]	= ptype,
@@ -171,26 +197,26 @@ pdu.dec_hdr = function (pkt)
 end
 
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
-pdu.enc[PTYPE.open] = function (s, t)
+pdu.enc[PTYPE.Open] = function (s, t)
 	local deadtime = t.deadtime or 0
 	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc[VTYPE.ObjectIdentifer]({}) .. val.enc[VTYPE.OctetString](t.name)
-	return pdu.enc_hdr(s, {["type"]=PTYPE.open, payload=payload})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.Open, payload=payload})
 end
 
-pdu.enc[PTYPE.close] = function (s, t)
+pdu.enc[PTYPE.Close] = function (s, t)
 	t = t or {}
 	local reason = t.reason or REASON.other
 	local payload = struct.pack(">B", reason) .. "\0\0\0"
-	return pdu.enc_hdr(s, {["type"]=PTYPE.close, payload=payload})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.Close, payload=payload})
 end
 
-pdu.dec[PTYPE.close] = function (pkt, res)
+pdu.dec[PTYPE.Close] = function (pkt, res)
 	local reason = struct.unpack(">B", pkt)
 	res.reason = reason
 	return pkt:sub(2), res
 end
 
-pdu.enc[PTYPE.register] = function (s, t)
+pdu.enc[PTYPE.Register] = function (s, t)
 	local timeout = t.timeout or 0
 	local priority = t.priority or 127
 	local range_subid = t.range_subid or 0
@@ -198,26 +224,34 @@ pdu.enc[PTYPE.register] = function (s, t)
 	if range_subid > 0 then
 		payload = payload .. struct.pack(">I", t.upper_bound)
 	end
-	return pdu.enc_hdr(s, {["type"]=PTYPE.register, payload=payload})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.Register, payload=payload})
 end
 
-pdu.enc[PTYPE.indexAllocate] = function (s, t)
+pdu.enc[PTYPE.IndexAllocate] = function (s, t)
 	local payload = ""
-	for i, v in ipairs(t.varbind) do
+	for i, v in ipairs(t.varbind or {}) do
 		payload = payload .. val.enc[VTYPE._VarBind](v)
 	end
-	return pdu.enc_hdr(s, {["type"]=PTYPE.indexAllocate, payload=payload, flags=t.flags})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.IndexAllocate, payload=payload, flags=t.flags})
 end
 
-pdu.enc[PTYPE.indexDeallocate] = function (s, t)
+pdu.enc[PTYPE.IndexDeallocate] = function (s, t)
 	local payload = ""
-	for i, v in ipairs(t.varbind) do
+	for i, v in ipairs(t.varbind or {}) do
 		payload = payload .. val.enc[VTYPE._VarBind](v)
 	end
-	return pdu.enc_hdr(s, {["type"]=PTYPE.indexDeallocate, payload=payload, flags=t.flags})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.IndexDeallocate, payload=payload, flags=t.flags})
 end
 
-pdu.dec[PTYPE.response] = function (pkt, res)
+pdu.enc[PTYPE.Response] = function (s, t)
+	local payload = struct.pack(">IHH", 0, t.error or ERROR.noAgentXError, t.index or 0)
+	for i, v in ipairs(t.varbind or {}) do
+		payload = payload .. val.enc[VTYPE._VarBind](v)
+	end
+	return pdu.enc_hdr(s, {["type"]=PTYPE.Response, payload=payload, flags=t.flags})
+end
+
+pdu.dec[PTYPE.Response] = function (pkt, res)
 	local sysUpTime, perror, index = struct.unpack(">IHH", pkt)
 	res.sysUpTime = sysUpTime
 	res.error = perror
@@ -262,8 +296,22 @@ function M:session (t)
 --	assert(fcntl.fcntl(self.fd, fcntl.F_SETFL, bit32.bor(fdflags, fcntl.O_NONBLOCK)))
 
 	self._producer = M:_producer_co()
+	local function _cb (result, cb)
+		local status, response
+		if type(t.cb) == "function" then
+			status, response = pcall(function() return t.cb(result) end)
+		elseif type(t.cb) == "thread" then
+			status, response = coroutine.resume(t.cb, result)
+		end
 
-	local status, result = M:_request(pdu.enc[PTYPE.open](self, t))
+		if status then
+			cb(response)
+		else
+			cb({ ["error"] = ERROR.processingError })
+		end
+	end
+
+	local status, result = M:_request(pdu.enc[PTYPE.Open](self, t))
 	if not status then
 		error(result)
 	end
@@ -277,7 +325,7 @@ end
 
 function M:close ()
 	if self._sessionID ~= nil then
-		local status, result = M:_request(pdu.enc[PTYPE.close](self))
+		local status, result = M:_request(pdu.enc[PTYPE.Close](self))
 		if not status then
 			error(result)
 		end
@@ -293,17 +341,22 @@ function M:close ()
 	return true
 end
 
-function M:process ()
+function M:next ()
 	local status, result = coroutine.resume(self._producer)
 	if not status then
 		error(result)
 	end
-	if result and result._hdr.type == PTYPE.response then
+	if not result then return end
+	if result._hdr.type == PTYPE.Response then
 		local co = self._requests[result._hdr.packetID]
 		self._requests[result._hdr.packetID] = nil
 		coroutine.resume(co, result)
 	else
-		coroutine.resume(self._consumer, result)
+		local session = { sessionID = result.sessionID, packetID = result.packetID }
+		local cb = function (response)
+			M:_send(pdu.enc[PTYPE.Response](session, response))
+		end
+		coroutine.resume(self._consumer, result, cb)
 	end
 end
 
@@ -347,15 +400,24 @@ function M:_producer_co ()
 				end
 			end
 
-			local pkt, res = pdu.dec[hdr.type](payload, { _hdr = hdr })
-			assert(pkt:len() == 0)
-			coroutine.yield(res)
+			local status, pkt, res = pcall(function () return pdu.dec[hdr.type](payload, { _hdr = hdr }) end)
+			if status then
+				assert(pkt:len() == 0)
+				coroutine.yield(res)
+			else
+				M:_send(pdu.enc[PTYPE.Response](self, { ["error"] = ERROR.parseError }))
+				coroutine.yield()
+			end
 		end
 	end)
 end
 
-function M:_request (msg, cb)
+function M:_send (msg)
 	assert(socket.send(self.fd, msg) == msg:len())
+end
+
+function M:_request (msg, cb)
+	M:_send(msg)
 
 	local status, result
 	local function _cb (...)
@@ -370,7 +432,7 @@ function M:_request (msg, cb)
 
 	if not cb then
 		while coroutine.status(co) ~= "dead" do
-			M:process()
+			M:next()
 		end
 		return status, result
 	end
@@ -379,21 +441,21 @@ function M:_request (msg, cb)
 end
 
 function M:register (t)
-	return M:_request(pdu.enc[PTYPE.register](self, t))
+	return M:_request(pdu.enc[PTYPE.Register](self, t))
 end
 
 function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	return M:_request(pdu.enc[PTYPE.indexAllocate](self, t))
+	return M:_request(pdu.enc[PTYPE.IndexAllocate](self, t))
 end
 
 function M:index_deallocate (t)
 	if t.name then
 		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	return M:_request(pdu.enc[PTYPE.indexDeallocate](self, t))
+	return M:_request(pdu.enc[PTYPE.IndexDeallocate](self, t))
 end
 
 return M

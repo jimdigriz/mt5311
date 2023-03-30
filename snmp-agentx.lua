@@ -69,9 +69,9 @@ while poll.poll(fds) do
 	for k, v in pairs(fds) do
 		if v.revents.IN then
 			if k == session.fd then
-				session:process()
+				session:next()
 			else
-				ebm:process()
+				ebm:next()
 			end
 			v.revents.IN = false
 		elseif v.revents.HUP then
