@@ -70,9 +70,13 @@ end
 local fds = {
 	[session.fd] = { events = { IN = true } }
 }
-while poll.poll(fds) do
+while true do
+	local status, err = pcall(function() return poll.poll(fds) end)
+	if not status then
+		error(err)
+	end
 	for k, v in pairs(fds) do
-		local status, err
+		local err
 		if v.revents.IN then
 			if k == session.fd then
 				status, err = session:next()
