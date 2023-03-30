@@ -307,7 +307,7 @@ pdu.dec[PTYPE.Response] = function (pkt, res)
 	return pkt, res
 end
 
-local M = { type = VTYPE, flags = FLAGS, error = ERROR }
+local M = { ptype = PTYPE, vtype = VTYPE, flags = FLAGS, error = ERROR }
 
 function M:session (t)
 	t = t or {}

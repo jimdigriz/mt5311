@@ -26,7 +26,9 @@ end
 -- print(session:recv())
 
 local agentx_cb = function (request)
-	print(request)
+	if request._hdr.type == agentx.ptype.GetNext then
+		print("w00t")
+	end
 end
 local session = agentx:session({name="EBM", cb=agentx_cb})
 local iftable_ifindex = {1,3,6,1,2,1,2,2,1,1}
@@ -34,7 +36,7 @@ local ifindex
 while not ifindex do
 	local status, result
 
-	status, result = session:index_allocate({["type"]=agentx.type.Integer, name=iftable_ifindex, flags=agentx.flags.NEW_INDEX})
+	status, result = session:index_allocate({["type"]=agentx.vtype.Integer, name=iftable_ifindex, flags=agentx.flags.NEW_INDEX})
 	if not status then
 		error(result)
 	end
