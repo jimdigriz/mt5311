@@ -239,6 +239,9 @@ pdu.dec[PTYPE.GetBulk] = function (pkt, res)
 	local non_repeaters, max_repetitions = struct.unpack(">HH", pkt)
 	pkt = pkt:sub(5)
 
+	res.non_repeaters = non_repeaters
+	res.max_repetitions = max_repetitions
+
 	res.gr = {}
 	while pkt:len() > 0 do
 		local gr
