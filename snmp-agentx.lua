@@ -74,11 +74,10 @@ while poll.poll(fds) do
 			else
 				status, err = ebm:next()
 			end
-			if status then
-				v.revents.IN = false
-			else
+			if not status then
 				error(err)
 			end
+			v.revents.IN = false
 		elseif v.revents.HUP then
 			error("nyi")
 		else
