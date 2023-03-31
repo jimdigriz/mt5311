@@ -209,10 +209,10 @@ function proto.dissector (tvb, pinfo, tree)
 	else
 		-- convlist_pre is used to temporarily hold the request frame number
 		-- for the response to discover. It is keyed by 'dev' (server MAC
-		-- concatenated with client MAC) and then by the iduence
-		-- number. When the response is processed, it looks here for
-		-- the request's frame number and then sets up convlist.
-		-- When handshakes are detected, convlist_pre[dev] is flushed.
+		-- concatenated with client MAC) and then by the reference id.
+		-- When the response is processed, it looks here for the request's
+		-- frame number and then sets up convlist. When handshakes are
+		-- detected, convlist_pre[dev] is flushed.
 
 		local server = response and pinfo.src or pinfo.dst
 		local client = response and pinfo.dst or pinfo.src
