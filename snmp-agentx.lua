@@ -66,8 +66,8 @@ local agentx_cb = function (session, request)
 		for i, v in ipairs(request.sr) do
 			local vb = {}
 			for kk, vv in session.mibview(v.start) do
-				if (v.include == 0 and kk > v.start) or (v.include == 1 and kk == v.start) then
-					vb.name = vv.name
+				if (v.include == 0 and kk > v.start) or (v.include == 1 and kk >= v.start) then
+					vb.name = kk
 					vb.type = vv.type
 					vb.data = vv.data
 				elseif v["end"] then
