@@ -219,9 +219,13 @@ end
 
 val.enc[VTYPE._VarBind] = function (t)
 	local data
-	if t.type == VTYPE.Integer then
+	if t.type == VTYPE.Integer or t.type == VTYPE.Counter32 or t.type == VTYPE.Gauge32 or t.type == VTYPE.TimeTicks then
 		data = struct.pack(">I", t.data or 0)
-	elseif t.type == VTYPE.OctetString then
+	elseif t.type == VTYPE.Counter64 then
+		error("nyi")
+	elseif t.type == VTYPE.ObjectIdentifer then
+		data = val.enc[VTYPE.ObjectIdentifer](t.data)
+	elseif t.type == VTYPE.OctetString or t.type == VTYPE.IpAddress or t.type == VTYPE.Opaque then
 		data = val.enc[VTYPE.OctetString](t.data)
 	elseif t.type == VTYPE.Null or t.type == VTYPE.noSuchObject or t.type == VTYPE.noSuchInstance or t.type == VTYPE.endOfMibView then
 		data = ""
@@ -239,13 +243,19 @@ val.dec[VTYPE._VarBind] = function (pkt)
 	pkt, name, include = val.dec[VTYPE.ObjectIdentifer](pkt)
 
 	local data
-	if vtype == VTYPE.Integer then
+	if vtype == VTYPE.Integer or vtype == VTYPE.Counter32 or vtype == VTYPE.Gauge32 or vtype == VTYPE.TimeTicks then
 		data = struct.unpack(">I", pkt)
 		pkt = pkt:sub(5)
-	elseif vtype == VTYPE.OctetString then
+	elseif vtype == VTYPE.Counter64 then
+		error("nyi")
+	elseif vtype == VTYPE.ObjectIdentifer then
+		pkt, data = val.dec[VTYPE.ObjectIdentifer](pkt)
+	elseif vtype == VTYPE.OctetString or vtype == VTYPE.IpAddress or vtype == VTYPE.Opaque then
 		pkt, data = val.dec[VTYPE.OctetString](pkt)
 	elseif vtype == VTYPE.ObjectIdentifer then
 		pkt, data = val.dec[VTYPE.ObjectIdentifer](pkt)
+	elseif vtype == VTYPE.Null or vtype == VTYPE.noSuchObject or vtype == VTYPE.noSuchInstance or vtype == VTYPE.endOfMibView then
+		data = nil
 	else
 		error("nyi " .. tostring(vtype))
 	end

@@ -34,6 +34,7 @@ local agentx_cb = function (session, request)
 	local response
 
 	if request._hdr.type == agentx.ptype.Get then
+print("HERE0")
 		response = { varbind = {} }
 		for i, v in ipairs(request.sr) do
 			local vb = { name = v.start }
@@ -65,25 +66,31 @@ local agentx_cb = function (session, request)
 		response = { varbind = {} }
 		for i, v in ipairs(request.sr) do
 			local vb = {}
-			for kk, vv in session.mibview(v.start) do
-				if (v.include == 0 and kk > v.start) or (v.include == 1 and kk >= v.start) then
-					vb.name = kk
-					vb.type = vv.type
-					vb.data = vv.data
-				elseif v["end"] then
-					local kkk, vvv
-					for kkkk, vvvv in session.mibview() do
-						if kkkk >= v["end"] then break end
-						kkk = kkkk
-						vvv = vvvv
-					end
-					vb.name = kkk
-					vb.type = vvv.type
-					vb.data = vvv.data
-				else
-					vb.name = v.start
-					vb.type = agentx.vtype.endOfMibView
+			local iter = session.mibview(v.start)
+			local kk, vv = iter()
+			if kk and v.include == 0 and kk == v.start then
+				kk, vv = iter()
+			end
+			if kk and (not v["end"] or kk < v["end"]) then
+				vb.name = kk
+				vb.type = vv.type
+				vb.data = vv.data
+print("HERE1", v.include, v.start, v["end"], vb.name, vb.type, vb.data)
+			elseif v["end"] then
+				local kkk, vvv
+				for kkkk, vvvv in session.mibview() do
+					if kkkk >= v["end"] then break end
+					kkk = kkkk
+					vvv = vvvv
 				end
+				vb.name = kkk
+				vb.type = vvv.type
+				vb.data = vvv.data
+print("HERE2", v.include, v.start, v["end"], vb.name, vb.type, vb.data)
+			else
+print("HERE3", v.include, v.start, v["end"], kk)
+				vb.name = v.start
+				vb.type = agentx.vtype.endOfMibView
 			end
 			table.insert(response.varbind, vb)
 		end
@@ -137,7 +144,29 @@ table.insert(iftable_copy, 0)
 iftable_copy[#iftable_copy] = 1
 session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = ifindex.data }
 iftable_copy[#iftable_copy] = 2
-session.mibview[iftable_copy] = { ["type"] = agentx.vtype.OctetString, data = "CHEESE" }
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.OctetString, data = arg[1] .. ".ebm" }
+iftable_copy[#iftable_copy] = 3
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = 97 }
+iftable_copy[#iftable_copy] = 4
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = 1500 }
+iftable_copy[#iftable_copy] = 5
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Gauge32, data = 0 }
+iftable_copy[#iftable_copy] = 6
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.OctetString, data = arg[2] }
+iftable_copy[#iftable_copy] = 7
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = 1 }
+iftable_copy[#iftable_copy] = 8
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = 1 }
+iftable_copy[#iftable_copy] = 9
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.TimeTicks, data = 69 }
+for i=10,20 do
+	iftable_copy[#iftable_copy] = i
+	session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Counter32, data = 0 }
+end
+iftable_copy[#iftable_copy] = 21
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Gauge32, data = 0 }
+iftable_copy[#iftable_copy] = 22
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.ObjectIdentifer, data = {0,0} }
 
 local fds = {
 	[session.fd] = { events = { IN = true } }
