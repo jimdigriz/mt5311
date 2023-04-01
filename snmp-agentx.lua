@@ -30,10 +30,68 @@ local iftable_ifindex = {unpack(iftable)}
 table.insert(iftable_ifindex, 1)
 
 local ifindex
-local agentx_cb = function (request)
+local agentx_cb = function (session, request)
 	local response
 
-	io.stderr:write("nyi, " .. tostring(request._hdr.type) .. "\n")
+	if request._hdr.type == agentx.ptype.Get then
+		response = { varbind = {} }
+		for i, v in ipairs(request.sr) do
+			local vb = { name = v.start }
+			local vv = session.mibview[v.start]
+			if vv then
+				vb.type = vv.type
+				vb.data = vv.data
+			else
+				vb.type = agentx.vtype.noSuchInstance
+				for kkk, vvv in session.mibview() do
+					if #vb.name < #kkk then
+						local match = true
+						for j=1,#vb.name do
+							if vb.name[j] ~= kkk[j] then
+								match = false
+								break
+							end
+						end
+						if match then
+							vb.type = agentx.vtype.noSuchObject
+							break
+						end
+					end
+				end
+			end
+			table.insert(response.varbind, vb)
+		end
+	elseif request._hdr.type == agentx.ptype.GetNext then
+		response = { varbind = {} }
+		for i, v in ipairs(request.sr) do
+			local vb = {}
+			for kk, vv in session.mibview(v.start) do
+				if (v.include == 0 and kk > v.start) or (v.include == 1 and kk == v.start) then
+					vb.name = vv.name
+					vb.type = vv.type
+					vb.data = vv.data
+				elseif v["end"] then
+					local kkk, vvv
+					for kkkk, vvvv in session.mibview() do
+						if kkkk >= v["end"] then break end
+						kkk = kkkk
+						vvv = vvvv
+					end
+					vb.name = kkk
+					vb.type = vvv.type
+					vb.data = vvv.data
+				else
+					vb.name = v.start
+					vb.type = agentx.vtype.endOfMibView
+				end
+			end
+			table.insert(response.varbind, vb)
+		end
+	elseif request._hdr.type == agentx.ptype.GetBulk then
+		error("nyi")
+	else
+		io.stderr:write("nyi, " .. tostring(request._hdr.type) .. "\n")
+	end
 
 	return response
 end
@@ -80,11 +138,6 @@ iftable_copy[#iftable_copy] = 1
 session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = ifindex.data }
 iftable_copy[#iftable_copy] = 2
 session.mibview[iftable_copy] = { ["type"] = agentx.vtype.OctetString, data = "CHEESE" }
-
-iftable_copy[#iftable_copy] = 1
-for k, v in session.mibview(iftable_copy) do
-	print(k, v.type)
-end
 
 local fds = {
 	[session.fd] = { events = { IN = true } }

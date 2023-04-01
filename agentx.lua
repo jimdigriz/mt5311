@@ -95,11 +95,88 @@ local REASON = {
 	byManager		= 6
 }
 
+local OID = { mt = {} }
+function OID.new (t)
+	local o = {unpack(t)}
+	setmetatable(o, OID.mt)
+	return o
+end
+function OID.mt.__tostring (v, b)
+	return "." .. table.concat(v, ".")
+end
+function OID.mt.__eq (a, b)
+	if #a ~= #b then
+		return false
+	end
+	for ii, vv in ipairs(a) do
+		if vv ~= b[ii] then
+			return false
+		end
+	end
+	return true
+end
+function OID.mt.__lt (a, b)
+	for i=1,math.min(#a, #b) do
+		if a[i] ~= b[i] then
+			return a[i] < b[i]
+		end
+	end
+	return #a < #b
+end
+
+local MIBView = { mt = {} }
+function MIBView.new ()
+	local t = { k = {}, v = {} }
+	setmetatable(t, MIBView.mt)
+	return t
+end
+function MIBView.mt.__index (t, k)
+	assert(#k > 0)
+	local o = (getmetatable(k) == MIBView.mt) and k or OID.new(k)
+	for ii, vv in ipairs(t.k) do
+		if vv == o then
+			return t.v[ii]
+		end
+	end
+	return nil
+end
+function MIBView.mt.__newindex (t, k, v)
+	assert(#k > 0)
+	local o = (getmetatable(k) == MIBView.mt) and k or OID.new(k)
+	for ii, vv in ipairs(t.k) do
+		if vv >= o then
+			table.insert(t.k, ii, o)
+			table.insert(t.v, ii, v)
+			return
+		end
+	end
+	table.insert(t.k, o)
+	table.insert(t.v, v)
+end
+function MIBView.mt.__call (t, k)
+	k = k or {}
+	local o = (getmetatable(k) == MIBView.mt) and k or OID.new(k)
+	local i = #t.k
+	for ii, vv in ipairs(t.k) do
+		if vv >= o then
+			i = ii - 1
+			break
+		end
+	end
+	return function ()
+		if i == #t.k then return nil end
+		i = i + 1
+		return OID.new({unpack(t.k[i])}), t.v[i]
+	end
+end
+
 local val = { enc = {}, dec = {} }
 
 val.enc[VTYPE.ObjectIdentifer] = function (v, i)
+	v = v or {}
+
 	local prefix = 0
-	if #v > 4 and v[1] == 1 and v[2] == 3 and v[3] == 6 and v[4] == 1 then
+	if #v > 4 and v[1] == 1 and v[2] == 3 and v[3] == 6 and v[4] == 1 and v[5] < 256 then
 		prefix = v[5]
 		v = {unpack(v, 6)}
 	end
@@ -116,17 +193,17 @@ val.dec[VTYPE.ObjectIdentifer] = function (pkt)
 	if prefix > 0 then
 		v = {1,3,6,1,prefix,unpack(v)}
 	end
-	return pkt:sub(1 + 4 * len), v, include
+	return pkt:sub(1 + 4 * len), (#v > 0) and OID.new(v) or nil, include
 end
 
 val.enc[VTYPE._SearchRange] = function (t)
-	return val.objectid(t.start, t.include) .. val.objectid(t["end"])
+	return val.enc[VTYPE.ObjectIdentifer](t.start, t.include) .. val.enc[VTYPE.ObjectIdentifer](t["end"])
 end
 
 val.dec[VTYPE._SearchRange] = function (pkt)
 	local vstart, include, vend
-	pkt, vstart, include = val.dec[VTYPE._VarBind](pkt)
-	pkt, venv = val.dec[VTYPE._VarBind](pkt)
+	pkt, vstart, include = val.dec[VTYPE.ObjectIdentifer](pkt)
+	pkt, venv = val.dec[VTYPE.ObjectIdentifer](pkt)
 	return pkt, { start = vstart, include = include, ["end"] = vend }
 end
 
@@ -146,10 +223,10 @@ val.enc[VTYPE._VarBind] = function (t)
 		data = struct.pack(">I", t.data or 0)
 	elseif t.type == VTYPE.OctetString then
 		data = val.enc[VTYPE.OctetString](t.data)
-	elseif t.type == VTYPE.Null or t.type == VTYPE.noSuchObject or t.type == VTYPE.noSuchInstance or t.type == endOfMibView then
+	elseif t.type == VTYPE.Null or t.type == VTYPE.noSuchObject or t.type == VTYPE.noSuchInstance or t.type == VTYPE.endOfMibView then
 		data = ""
 	else
-		error("nyi")
+		error("nyi " .. t.type)
 	end
 	return struct.pack(">H", t.type) .. "\0\0" .. val.enc[VTYPE.ObjectIdentifer](t.name) .. data
 end
@@ -228,11 +305,11 @@ pdu.dec[PTYPE.Close] = function (pkt, res)
 end
 
 pdu.dec[PTYPE.Get] = function (pkt, res)
-	res.gr = {}
+	res.sr = {}
 	while pkt:len() > 0 do
-		local gr
-		pkt, gr = val.dec[VTYPE._SearchRange](pkt)
-		table.insert(res.gr, gr)
+		local sr
+		pkt, sr = val.dec[VTYPE._SearchRange](pkt)
+		table.insert(res.sr, sr)
 	end
 	return pkt, res
 end
@@ -246,11 +323,11 @@ pdu.dec[PTYPE.GetBulk] = function (pkt, res)
 	res.non_repeaters = non_repeaters
 	res.max_repetitions = max_repetitions
 
-	res.gr = {}
+	res.sr = {}
 	while pkt:len() > 0 do
-		local gr
-		pkt, gr = val.dec[VTYPE._SearchRange](pkt)
-		table.insert(res.gr, gr)
+		local sr
+		pkt, sr = val.dec[VTYPE._SearchRange](pkt)
+		table.insert(res.sr, sr)
 	end
 
 	return pkt, res
@@ -311,81 +388,6 @@ end
 
 local M = { ptype = PTYPE, vtype = VTYPE, flags = FLAGS, error = ERROR }
 
-local OID = { mt = {} }
-function OID.new (t)
-	local o = {unpack(t or {})}
-	setmetatable(o, OID.mt)
-	return o
-end
-function OID.mt.__tostring (v, b)
-	return "." .. table.concat(v, ".")
-end
-function OID.mt.__eq (a, b)
-	if #a ~= #b then
-		return false
-	end
-	for ii, vv in ipairs(a) do
-		if vv ~= b[ii] then
-			return false
-		end
-	end
-	return true
-end
-function OID.mt.__lt (a, b)
-	for i=1,math.min(#a, #b) do
-		if a[i] ~= b[i] then
-			return a[i] < b[i]
-		end
-	end
-	return #a < #b
-end
-
-local MIBView = { mt = {} }
-function MIBView.new ()
-	local t = { k = {}, v = {} }
-	setmetatable(t, MIBView.mt)
-	return t
-end
-function MIBView.mt.__index (t, k)
-	if #t.k > 0 and (not k or #k == 0) then
-		return t.v[1]
-	end
-	local o = OID.new(k)
-	for ii, vv in ipairs(t.k) do
-		if vv >= o then
-			return t.v[ii]
-		end
-	end
-	return nil
-end
-function MIBView.mt.__newindex (t, k, v)
-	local o = OID.new(k)
-	for ii, vv in ipairs(t.k) do
-		if vv >= o then
-			table.insert(t.k, ii, o)
-			table.insert(t.v, ii, v)
-			return
-		end
-	end
-	table.insert(t.k, o)
-	table.insert(t.v, v)
-end
-function MIBView.mt.__call (t, k)
-	local o = OID.new(k)
-	local i = #t.k
-	for ii, vv in ipairs(t.k) do
-		if vv >= o then
-			i = ii - 1
-			break
-		end
-	end
-	return function ()
-		if i == #t.k then return nil end
-		i = i + 1
-		return OID.new({unpack(t.k[i])}), t.v[i]
-	end
-end
-
 function M:session (t)
 	t = t or {}
 
@@ -415,15 +417,15 @@ function M:session (t)
 	self._consumer = function (result, cb)
 		local status, response
 		if type(t.cb) == "function" then
-			status, response = pcall(function() return t.cb(result) end)
+			status, response = pcall(function() return t.cb(self, result) end)
 		elseif type(t.cb) == "thread" then
-			status, response = coroutine.resume(t.cb, result)
+			status, response = coroutine.resume(t.cb, self, result)
 		end
 		if status and type(response) == "table" then
 			cb(response)
 		else
 			if not status then
-				io.stderr:write("consumer error: " .. response)
+				io.stderr:write("consumer error: " .. response .. "\n")
 			end
 			cb({ ["error"] = ERROR.processingError })
 		end
@@ -532,7 +534,8 @@ function M:_producer_co ()
 				assert(pkt:len() == 0)
 				coroutine.yield(res)
 			else
-				M:_send(pdu.enc[PTYPE.Response](res._hdr, { ["error"] = ERROR.parseError }))
+				io.stderr:write("pdu decode error: " .. pkt .. "\n")
+				M:_send(pdu.enc[PTYPE.Response](hdr, { ["error"] = ERROR.parseError }))
 				coroutine.yield()
 			end
 		end
