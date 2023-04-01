@@ -81,7 +81,8 @@ session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = ifinde
 iftable_copy[#iftable_copy] = 2
 session.mibview[iftable_copy] = { ["type"] = agentx.vtype.OctetString, data = "CHEESE" }
 
-for k, v in session.mibview() do
+iftable_copy[#iftable_copy] = 1
+for k, v in session.mibview(iftable_copy) do
 	print(k, v.type)
 end
 

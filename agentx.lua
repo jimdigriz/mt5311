@@ -372,18 +372,18 @@ function MIBView.mt.__newindex (t, k, v)
 end
 function MIBView.mt.__call (t, k)
 	local o = OID.new(k)
-	local i
-	for i, v in ipairs(t.k) do
-		if v >= o then
-			i = i - 1
-			return function ()
-				if #t.k == i then return nil end
-				i = i + 1
-				return OID.new({unpack(t.k[i])}), t.v[i]
-			end
+	local i = #t.k
+	for ii, vv in ipairs(t.k) do
+		if vv >= o then
+			i = ii - 1
+			break
 		end
 	end
-	return nil
+	return function ()
+		if i == #t.k then return nil end
+		i = i + 1
+		return OID.new({unpack(t.k[i])}), t.v[i]
+	end
 end
 
 function M:session (t)
