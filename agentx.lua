@@ -146,6 +146,8 @@ val.enc[VTYPE._VarBind] = function (t)
 		data = struct.pack(">I", t.data or 0)
 	elseif t.type == VTYPE.OctetString then
 		data = val.enc[VTYPE.OctetString](t.data)
+	elseif t.type == VTYPE.Null or t.type == VTYPE.noSuchObject or t.type == VTYPE.noSuchInstance or t.type == endOfMibView then
+		data = ""
 	else
 		error("nyi")
 	end
@@ -229,7 +231,7 @@ pdu.dec[PTYPE.Get] = function (pkt, res)
 	res.gr = {}
 	while pkt:len() > 0 do
 		local gr
-		pkt, gr = val.dec[VTYPE.ObjectIdentifer](pkt)
+		pkt, gr = val.dec[VTYPE._SearchRange](pkt)
 		table.insert(res.gr, gr)
 	end
 	return pkt, res
@@ -247,7 +249,7 @@ pdu.dec[PTYPE.GetBulk] = function (pkt, res)
 	res.gr = {}
 	while pkt:len() > 0 do
 		local gr
-		pkt, gr = val.dec[VTYPE.ObjectIdentifer](pkt)
+		pkt, gr = val.dec[VTYPE._SearchRange](pkt)
 		table.insert(res.gr, gr)
 	end
 
@@ -309,6 +311,81 @@ end
 
 local M = { ptype = PTYPE, vtype = VTYPE, flags = FLAGS, error = ERROR }
 
+local OID = { mt = {} }
+function OID.new (t)
+	local o = {unpack(t or {})}
+	setmetatable(o, OID.mt)
+	return o
+end
+function OID.mt.__tostring (v, b)
+	return "." .. table.concat(v, ".")
+end
+function OID.mt.__eq (a, b)
+	if #a ~= #b then
+		return false
+	end
+	for ii, vv in ipairs(a) do
+		if vv ~= b[ii] then
+			return false
+		end
+	end
+	return true
+end
+function OID.mt.__lt (a, b)
+	for i=1,math.min(#a, #b) do
+		if a[i] ~= b[i] then
+			return a[i] < b[i]
+		end
+	end
+	return #a < #b
+end
+
+local MIBView = { mt = {} }
+function MIBView.new ()
+	local t = { k = {}, v = {} }
+	setmetatable(t, MIBView.mt)
+	return t
+end
+function MIBView.mt.__index (t, k)
+	if #t.k > 0 and (not k or #k == 0) then
+		return t.v[1]
+	end
+	local o = OID.new(k)
+	for ii, vv in ipairs(t.k) do
+		if vv >= o then
+			return t.v[ii]
+		end
+	end
+	return nil
+end
+function MIBView.mt.__newindex (t, k, v)
+	local o = OID.new(k)
+	for ii, vv in ipairs(t.k) do
+		if vv >= o then
+			table.insert(t.k, ii, o)
+			table.insert(t.v, ii, v)
+			return
+		end
+	end
+	table.insert(t.k, o)
+	table.insert(t.v, v)
+end
+function MIBView.mt.__call (t, k)
+	local o = OID.new(k)
+	local i
+	for i, v in ipairs(t.k) do
+		if v >= o then
+			i = i - 1
+			return function ()
+				if #t.k == i then return nil end
+				i = i + 1
+				return OID.new({unpack(t.k[i])}), t.v[i]
+			end
+		end
+	end
+	return nil
+end
+
 function M:session (t)
 	t = t or {}
 
@@ -345,6 +422,9 @@ function M:session (t)
 		if status and type(response) == "table" then
 			cb(response)
 		else
+			if not status then
+				io.stderr:write("consumer error: " .. response)
+			end
 			cb({ ["error"] = ERROR.processingError })
 		end
 	end
@@ -359,6 +439,8 @@ function M:session (t)
 	end
 
 	self._sessionID = result._hdr.sessionID
+
+	self.mibview = MIBView.new()
 
 	return self
 end
@@ -382,7 +464,7 @@ function M:close ()
 	return true
 end
 
-function M:next ()
+function M:process ()
 	local status, result = coroutine.resume(self._producer)
 	if not status then
 		if result == "closed" then
@@ -477,7 +559,7 @@ function M:_request (msg, cb)
 
 	if not cb then
 		while coroutine.status(co) ~= "dead" do
-			M:next()
+			M:process()
 		end
 		return status, result
 	end

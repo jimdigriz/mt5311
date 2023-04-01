@@ -25,14 +25,20 @@ end
 -- session:send({reg='linktime'})
 -- print(session:recv())
 
+local iftable = {1,3,6,1,2,1,2,2,1}
+local iftable_ifindex = {unpack(iftable)}
+table.insert(iftable_ifindex, 1)
+
+local ifindex
 local agentx_cb = function (request)
-	if request._hdr.type == agentx.ptype.GetNext then
-		print("w00t")
-	end
+	local response
+
+	io.stderr:write("nyi, " .. tostring(request._hdr.type) .. "\n")
+
+	return response
 end
 local session = agentx:session({name="EBM", cb=agentx_cb})
-local iftable_ifindex = {1,3,6,1,2,1,2,2,1,1}
-local ifindex
+
 while not ifindex do
 	local status, result
 
@@ -46,10 +52,10 @@ while not ifindex do
 
 	ifindex = result.varbind[1]
 
-	local iftable = {unpack(iftable_ifindex)}
-	table.insert(iftable, ifindex.data)
+	local subtree = {unpack(iftable_ifindex)}
+	table.insert(subtree, ifindex.data)
 
-	status, result = session:register({range_subid=#iftable - 1, subtree=iftable, upper_bound=22})
+	status, result = session:register({range_subid=#subtree - 1, subtree=subtree, upper_bound=22})
 	if not status then
 		error(result)
 	end
@@ -67,6 +73,18 @@ while not ifindex do
 	end
 end
 
+local iftable_copy = {unpack(iftable)}
+table.insert(iftable_copy, ifindex.data)
+table.insert(iftable_copy, 0)
+iftable_copy[#iftable_copy] = 1
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.Integer, data = ifindex.data }
+iftable_copy[#iftable_copy] = 2
+session.mibview[iftable_copy] = { ["type"] = agentx.vtype.OctetString, data = "CHEESE" }
+
+for k, v in session.mibview() do
+	print(k, v.type)
+end
+
 local fds = {
 	[session.fd] = { events = { IN = true } }
 }
@@ -79,9 +97,9 @@ while true do
 		local err
 		if v.revents.IN then
 			if k == session.fd then
-				status, err = session:next()
+				status, err = session:process()
 			else
-				status, err = ebm:next()
+				status, err = ebm:process()
 			end
 			if not status then
 				error(err)
