@@ -61,7 +61,7 @@ local iftable_copy = {unpack(iftable)}
 table.insert(iftable_copy, 0)
 table.insert(iftable_copy, ifindex)
 
-local mibview_load = {
+local mibview_iftable_load = {
 --	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex },	-- auto-registered by index_allocate
 	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = arg[1] .. ".ebm" },
 	[3]	= { ["type"] = agentx.VTYPE.Integer, data = 97 },
@@ -75,9 +75,9 @@ local mibview_load = {
 	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }
 }
 for i=10,20 do
-	mibview_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
+	mibview_iftable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
 end
-for k, v in pairs(mibview_load) do
+for k, v in pairs(mibview_iftable_load) do
 	iftable_copy[#iftable_copy - 1] = k
 	session.mibview[iftable_copy] = v
 end
