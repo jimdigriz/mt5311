@@ -52,70 +52,38 @@ local agentx_cb = function (session, request)
 	return response
 end
 local session = agentx:session({name="EBM", cb=agentx_cb})
-
-while not ifindex do
-	local status, result
-
-	status, result = session:index_allocate({["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX})
-	if not status then
-		error(result)
-	end
-	if result.error ~= agentx.ERROR.noAgentXError then
-		error(result.error)
-	end
-
-	ifindex = result.varbind[1]
-
-	local subtree = {unpack(iftable_ifindex)}
-	table.insert(subtree, ifindex.data)
-
-	status, result = session:register({range_subid=#subtree - 1, subtree=subtree, upper_bound=22})
-	if not status then
-		error(result)
-	end
-	if result.err == agentx.ERROR.duplicateRegistration then
-		status, result = session:index_deallocate(ifindex)
-		if not status then
-			error(result)
-		end
-		if result.error ~= agentx.ERROR.noAgentXError then
-			error(result.error)
-		end
-		ifindex = nil
-	elseif result.error ~= agentx.ERROR.noAgentXError then
-		error(result.error)
-	end
+local ifindex = session:index_allocate({["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX})
+if not ifindex then
+	error("ifindex")
 end
 
 local iftable_copy = {unpack(iftable)}
 table.insert(iftable_copy, 0)
-table.insert(iftable_copy, ifindex.data)
-iftable_copy[#iftable_copy - 1] = 1
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Integer, data = ifindex.data }
-iftable_copy[#iftable_copy - 1] = 2
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.OctetString, data = arg[1] .. ".ebm" }
-iftable_copy[#iftable_copy - 1] = 3
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Integer, data = 97 }
-iftable_copy[#iftable_copy - 1] = 4
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Integer, data = 1500 }
-iftable_copy[#iftable_copy - 1] = 5
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Gauge32, data = 0 }
-iftable_copy[#iftable_copy - 1] = 6
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.OctetString, data = macaddr2bytes(arg[2]) }
-iftable_copy[#iftable_copy - 1] = 7
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Integer, data = 1 }
-iftable_copy[#iftable_copy - 1] = 8
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Integer, data = 1 }
-iftable_copy[#iftable_copy - 1] = 9
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.TimeTicks, data = 69 }
+table.insert(iftable_copy, ifindex)
+
+local mibview_load = {
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex },
+	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = arg[1] .. ".ebm" },
+	[3]	= { ["type"] = agentx.VTYPE.Integer, data = 97 },
+	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },
+	[5]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },
+	[6]	= { ["type"] = agentx.VTYPE.OctetString, data = macaddr2bytes(arg[2]) },
+	[7]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },
+	[8]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },
+	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = 69 },
+	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },
+	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }
+}
 for i=10,20 do
-	iftable_copy[#iftable_copy - 1] = i
-	session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
+	mibview_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
 end
-iftable_copy[#iftable_copy - 1] = 21
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.Gauge32, data = 0 }
-iftable_copy[#iftable_copy - 1] = 22
-session.mibview[iftable_copy] = { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }
+for k, v in pairs(mibview_load) do
+	iftable_copy[#iftable_copy - 1] = k
+	session.mibview[iftable_copy] = v
+end
+
+iftable_copy[#iftable_copy - 1] = 2
+local status, result = session:register({range_subid=#iftable_copy - 1, subtree=iftable_copy, upper_bound=22})
 
 local fds = {
 	[session.fd] = { events = { IN = true } }

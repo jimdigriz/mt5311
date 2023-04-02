@@ -403,7 +403,7 @@ local M = { OID = OID, PTYPE = PTYPE, VTYPE = VTYPE, FLAGS = FLAGS, ERROR = ERRO
 function M:session (t)
 	t = t or {}
 
-	setmetatable({ __gc = function() M:close() end }, self)
+	setmetatable({}, self)
 	self.__index = self
 
 	t.name = t.name or "Lua AgentX"
@@ -417,7 +417,7 @@ function M:session (t)
 	self.fd = assert(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0))
 	local ok, err, e = socket.connect(self.fd, { family=socket.AF_UNIX, path=t.path })
 	if not ok then
-		M:close()
+		self:close()
 		return nil, err
 	end
 
@@ -425,9 +425,9 @@ function M:session (t)
 --	local fdflags = fcntl.fcntl(self.fd, fcntl.F_GETFL)
 --	assert(fcntl.fcntl(self.fd, fcntl.F_SETFL, bit32.bor(fdflags, fcntl.O_NONBLOCK)))
 
-	self._producer = M:_producer_co()
+	self._producer = self:_producer_co()
 	self._consumer = function (result, cb)
-		local status, response = M:_consumer_mibview(result)
+		local status, response = self:_consumer_mibview(result)
 		if not status then
 			if type(t.cb) == "function" then
 				status, response = pcall(function() return t.cb(result) end)
@@ -446,7 +446,7 @@ function M:session (t)
 	end
 
 	local session = { sessionID=0, packetID=self._packetID }
-	local status, result = M:_request(pdu.enc[PTYPE.Open](session, t))
+	local status, result = self:_request(pdu.enc[PTYPE.Open](session, t))
 	if not status then
 		error(result)
 	end
@@ -464,7 +464,7 @@ end
 function M:close ()
 	if self._sessionID ~= nil then
 		local session = { sessionID=self._sessionID, packetID=self._packetID }
-		local status, result = M:_request(pdu.enc[PTYPE.Close](session))
+		local status, result = self:_request(pdu.enc[PTYPE.Close](session))
 		if not status then
 			error(result)
 		end
@@ -485,7 +485,7 @@ function M:process ()
 	if not status then
 		if result == "closed" then
 			self._sessionID = nil
-			M:close()
+			self:close()
 		end
 		return false, result
 	end
@@ -496,7 +496,7 @@ function M:process ()
 		coroutine.resume(co, result)
 	else
 		local cb = function (res)
-			M:_send(pdu.enc[PTYPE.Response](result._hdr, res))
+			self:_send(pdu.enc[PTYPE.Response](result._hdr, res))
 		end
 		self._consumer(result, cb)
 	end
@@ -549,122 +549,122 @@ function M:_producer_co ()
 				coroutine.yield(res)
 			else
 				io.stderr:write("pdu decode error: " .. pkt .. "\n")
-				M:_send(pdu.enc[PTYPE.Response](hdr, { ["error"] = ERROR.parseError }))
+				self:_send(pdu.enc[PTYPE.Response](hdr, { ["error"] = ERROR.parseError }))
 				coroutine.yield()
 			end
 		end
 	end)
 end
 
-function M:_consumer_mibview_get (request)
-	local varbind = {}
+function M:_consumer_mibview (request)
+	local function mibview_get (request)
+		local varbind = {}
 
-	for i, v in ipairs(request.sr) do
-		local vb = { name = v.start }
-		local vv = self.mibview[v.start]
-		if vv then
-			vb.type = vv.type
-			vb.data = vv.data
-		else
-			vb.type = VTYPE.noSuchInstance
-			for kkk, vvv in self.mibview() do
-				if #vb.name < #kkk then
-					local match = true
-					for j=1,#vb.name do
-						if vb.name[j] ~= kkk[j] then
-							match = false
+		for i, v in ipairs(request.sr) do
+			local vb = { name = v.start }
+			local vv = self.mibview[v.start]
+			if vv then
+				vb.type = vv.type
+				vb.data = vv.data
+			else
+				vb.type = VTYPE.noSuchInstance
+				for kkk, vvv in self.mibview() do
+					if #vb.name < #kkk then
+						local match = true
+						for j=1,#vb.name do
+							if vb.name[j] ~= kkk[j] then
+								match = false
+								break
+							end
+						end
+						if match then
+							vb.type = VTYPE.noSuchObject
 							break
 						end
 					end
-					if match then
-						vb.type = VTYPE.noSuchObject
-						break
-					end
 				end
 			end
+			table.insert(varbind, vb)
 		end
-		table.insert(varbind, vb)
+
+		return varbind
 	end
 
-	return varbind
-end
+	local function mibview_getnext (request)
+		local varbind = {}
 
-function M:_consumer_mibview_getnext (request)
-	local varbind = {}
-
-	for i, v in ipairs(request.sr) do
-		local vb = {}
-		local iter = self.mibview(v.start)
-		local kk, vv = iter()
-		if kk and v.include == 0 and kk == v.start then
-			kk, vv = iter()
-		end
-		if kk and (not v["end"] or kk < v["end"]) then
-			vb.name = kk
-			vb.type = vv.type
-			vb.data = vv.data
-		elseif v["end"] then
-			local kkk, vvv
-			for kkkk, vvvv in self.mibview() do
-				if kkkk >= v["end"] then break end
-				if (v.include == 0 and kkkk > v.start) or (v.include == 1 and kkkk >= v.start) then
-					kkk = kkkk
-					vvv = vvvv
-				end
+		for i, v in ipairs(request.sr) do
+			local vb = {}
+			local iter = self.mibview(v.start)
+			local kk, vv = iter()
+			if kk and v.include == 0 and kk == v.start then
+				kk, vv = iter()
 			end
-			if kkk then
-				vb.name = kkk
-				vb.type = vvv.type
-				vb.data = vvv.data
+			if kk and (not v["end"] or kk < v["end"]) then
+				vb.name = kk
+				vb.type = vv.type
+				vb.data = vv.data
+			elseif v["end"] then
+				local kkk, vvv
+				for kkkk, vvvv in self.mibview() do
+					if kkkk >= v["end"] then break end
+					if (v.include == 0 and kkkk > v.start) or (v.include == 1 and kkkk >= v.start) then
+						kkk = kkkk
+						vvv = vvvv
+					end
+				end
+				if kkk then
+					vb.name = kkk
+					vb.type = vvv.type
+					vb.data = vvv.data
+				else
+					vb.name = v.start
+					vb.type = VTYPE.endOfMibView
+				end
 			else
 				vb.name = v.start
 				vb.type = VTYPE.endOfMibView
 			end
-		else
-			vb.name = v.start
-			vb.type = VTYPE.endOfMibView
+			table.insert(varbind, vb)
+			if i == request.non_repeaters then break end	-- getbulk
 		end
-		table.insert(varbind, vb)
-		if i == request.non_repeaters then break end	-- getbulk
+
+		return varbind
 	end
 
-	return varbind
-end
+	local function mibview_getbulk (request, varbind)
+		if request.max_repetitions == 0 then return end
+		local k0 = request.sr[request.non_repeaters + 1].start
+		local iter = self.mibview(k0)
+		local k, v = iter()
+		if k and request.include == 0 and k == k0 then
+			k, v = iter()
+		end
+		if not k then return end
+		local i = 0
+		for k, v in iter() do
+			table.insert(varbind, { name = k, type = v.type, data = v.data })
+			i = i + 1
+			if i > request.max_repetitions then break end
+		end
+		if i < request.max_repetitions then
+			table.insert(varbind, { name = varbind[#t].name, type = VTYPE.endOfMibView })
+		end
+	end
 
-function M:_consumer_mibview_getbulk (request, varbind)
-	if request.max_repetitions == 0 then return end
-	local k0 = request.sr[request.non_repeaters + 1].start
-	local iter = self.mibview(k0)
-	local k, v = iter()
-	if k and request.include == 0 and k == k0 then
-		k, v = iter()
-	end
-	if not k then return end
-	local i = 0
-	for k, v in iter() do
-		table.insert(varbind, { name = k, type = v.type, data = v.data })
-		i = i + 1
-		if i > request.max_repetitions then break end
-	end
-	if i < request.max_repetitions then
-		table.insert(varbind, { name = varbind[#t].name, type = VTYPE.endOfMibView })
-	end
-end
-
-function M:_consumer_mibview (request)
 	local status = false
 	local response
 
 	if request._hdr.type == PTYPE.Get then
 		status = true
-		varbind = M:_consumer_mibview_get(request)
+		varbind = mibview_get(request)
 	elseif request._hdr.type == PTYPE.GetNext then
 		status = true
-		varbind = M:_consumer_mibview_getnext(request)
+		varbind = mibview_getnext(request)
 	elseif request._hdr.type == PTYPE.GetBulk then
 		status = true
-		varbind = M:_consumer_mibview_getnext(request)
-		M:_consumer_mibview_getbulk(request, varbind)
+		varbind = mibview_getnext(request)
+		mibview_getbulk(request, varbind)
 	end
 
 	if status then
@@ -687,7 +687,7 @@ function M:_send (msg)
 end
 
 function M:_request (msg, cb)
-	M:_send(msg)
+	self:_send(msg)
 
 	local status, result
 	local function _cb (...)
@@ -702,7 +702,7 @@ function M:_request (msg, cb)
 
 	if not cb then
 		while coroutine.status(co) ~= "dead" do
-			M:process()
+			self:process()
 		end
 		return status, result
 	end
@@ -712,23 +712,71 @@ end
 
 function M:register (t)
 	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
-	return M:_request(pdu.enc[PTYPE.Register](session, t))
-end
-
-function M:index_allocate (t)
-	if t.name then
-		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
-	end
-	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
-	return M:_request(pdu.enc[PTYPE.IndexAllocate](session, t))
+	return self:_request(pdu.enc[PTYPE.Register](session, t))
 end
 
 function M:index_deallocate (t)
 	if t.name then
-		t = { flags = t.flags, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
+		t = { flags = t.flags, context = t.context, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
 	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
-	return M:_request(pdu.enc[PTYPE.IndexDeallocate](session, t))
+	local status, result = self:_request(pdu.enc[PTYPE.IndexDeallocate](session, t))
+	if status then
+		for i, v in ipairs(t.varbind) do
+			local iftable = {unpack(v.name)}
+			table.insert(iftable, v.data)
+			self.mibview[iftable] = nil
+		end
+	end
+	return status, result
+end
+
+function M:index_allocate (t)
+	if t.name then
+		t = { flags = t.flags, context = t.context, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
+	end
+	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
+
+	assert(#t.varbind == 1)	-- do not yet support more than one at a time
+
+	local ifindex
+	while not ifindex do
+		local status, result = self:_request(pdu.enc[PTYPE.IndexAllocate](session, t))
+		if not status then
+			error(result)
+		end
+		if result.error ~= ERROR.noAgentXError then
+			error(result.error)
+		end
+
+		ifindex = result.varbind[1]
+
+		local iftable = {unpack(ifindex.name)}
+		table.insert(iftable, ifindex.data)
+
+		status, result = self:register({subtree=iftable})
+		if not status then
+			error(result)
+		end
+		if result.err == ERROR.duplicateRegistration then
+			status, result = self:index_deallocate(session, { ["type"] = ifindex.type, name = iftable, data = ifindex.data })
+			if not status then
+				error(result)
+			end
+			if result.error ~= ERROR.noAgentXError then
+				error(result.error)
+			end
+			ifindex = nil
+		elseif result.error ~= ERROR.noAgentXError then
+			error(result.error)
+		end
+	end
+
+	local iftable = {unpack(ifindex.name)}
+	table.insert(iftable, ifindex.data)
+	self.mibview[iftable] = { ["type"] = ifindex.type, data = ifindex.data }
+
+	return ifindex.data
 end
 
 return M
