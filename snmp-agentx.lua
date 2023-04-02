@@ -62,7 +62,7 @@ table.insert(iftable_copy, 0)
 table.insert(iftable_copy, ifindex)
 
 local mibview_load = {
---	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex },
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex },	-- auto-registered by index_allocate
 	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = arg[1] .. ".ebm" },
 	[3]	= { ["type"] = agentx.VTYPE.Integer, data = 97 },
 	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },
