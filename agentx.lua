@@ -64,7 +64,7 @@ local VTYPE = {
 	TimeTicks		= 67,
 	Opaque			= 68,
 	Counter64		= 67,
-	noSuchobject		= 128,
+	noSuchObject		= 128,
 	noSuchInstance		= 129,
 	endOfMibView		= 130
 }
@@ -203,18 +203,20 @@ end
 val.dec[VTYPE._SearchRange] = function (pkt)
 	local vstart, include, vend
 	pkt, vstart, include = val.dec[VTYPE.ObjectIdentifer](pkt)
-	pkt, venv = val.dec[VTYPE.ObjectIdentifer](pkt)
+	pkt, vend = val.dec[VTYPE.ObjectIdentifer](pkt)
 	return pkt, { start = vstart, include = include, ["end"] = vend }
 end
 
 val.enc[VTYPE.OctetString] = function (v)
 	v = v or ""
-	return struct.pack(">I", v:len()) .. v .. string.rep("\0", 4 - v:len() % 4)
+	local plen = (4 - (v:len() % 4)) % 4
+	return struct.pack(">I", v:len()) .. v .. string.rep("\0", plen)
 end
 
 val.dec[VTYPE.OctetString] = function (pkt)
 	local len = struct.unpack(">I", pkt)
-	return pkt:sub(5 + len + (4 - len % 4)), pkt:sub(5, len)
+	local plen = (4 - (len % 4)) % 4
+	return pkt:sub(5 + len + plen), pkt:sub(5, len)
 end
 
 val.enc[VTYPE._VarBind] = function (t)
