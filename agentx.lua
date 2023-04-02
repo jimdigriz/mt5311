@@ -398,7 +398,7 @@ pdu.dec[PTYPE.Response] = function (pkt, res)
 	return pkt, res
 end
 
-local M = { ptype = PTYPE, vtype = VTYPE, flags = FLAGS, error = ERROR }
+local M = { OID = OID, PTYPE = PTYPE, VTYPE = VTYPE, FLAGS = FLAGS, ERROR = ERROR, REASON = REASON }
 
 function M:session (t)
 	t = t or {}
@@ -427,11 +427,13 @@ function M:session (t)
 
 	self._producer = M:_producer_co()
 	self._consumer = function (result, cb)
-		local status, response
-		if type(t.cb) == "function" then
-			status, response = pcall(function() return t.cb(self, result) end)
-		elseif type(t.cb) == "thread" then
-			status, response = coroutine.resume(t.cb, self, result)
+		local status, response = M:_consumer_mibview(result)
+		if not status then
+			if type(t.cb) == "function" then
+				status, response = pcall(function() return t.cb(result) end)
+			elseif type(t.cb) == "thread" then
+				status, response = coroutine.resume(t.cb, result)
+			end
 		end
 		if status and type(response) == "table" then
 			cb(response)
@@ -553,6 +555,132 @@ function M:_producer_co ()
 		end
 	end)
 end
+
+function M:_consumer_mibview_get (request)
+	local varbind = {}
+
+	for i, v in ipairs(request.sr) do
+		local vb = { name = v.start }
+		local vv = self.mibview[v.start]
+		if vv then
+			vb.type = vv.type
+			vb.data = vv.data
+		else
+			vb.type = VTYPE.noSuchInstance
+			for kkk, vvv in self.mibview() do
+				if #vb.name < #kkk then
+					local match = true
+					for j=1,#vb.name do
+						if vb.name[j] ~= kkk[j] then
+							match = false
+							break
+						end
+					end
+					if match then
+						vb.type = VTYPE.noSuchObject
+						break
+					end
+				end
+			end
+		end
+		table.insert(varbind, vb)
+	end
+
+	return varbind
+end
+
+function M:_consumer_mibview_getnext (request)
+	local varbind = {}
+
+	for i, v in ipairs(request.sr) do
+		local vb = {}
+		local iter = self.mibview(v.start)
+		local kk, vv = iter()
+		if kk and v.include == 0 and kk == v.start then
+			kk, vv = iter()
+		end
+		if kk and (not v["end"] or kk < v["end"]) then
+			vb.name = kk
+			vb.type = vv.type
+			vb.data = vv.data
+		elseif v["end"] then
+			local kkk, vvv
+			for kkkk, vvvv in self.mibview() do
+				if kkkk >= v["end"] then break end
+				if (v.include == 0 and kkkk > v.start) or (v.include == 1 and kkkk >= v.start) then
+					kkk = kkkk
+					vvv = vvvv
+				end
+			end
+			if kkk then
+				vb.name = kkk
+				vb.type = vvv.type
+				vb.data = vvv.data
+			else
+				vb.name = v.start
+				vb.type = VTYPE.endOfMibView
+			end
+		else
+			vb.name = v.start
+			vb.type = VTYPE.endOfMibView
+		end
+		table.insert(varbind, vb)
+		if i == request.non_repeaters then break end	-- getbulk
+	end
+
+	return varbind
+end
+
+function M:_consumer_mibview_getbulk (request, varbind)
+	if request.max_repetitions == 0 then return end
+	local k0 = request.sr[request.non_repeaters + 1].start
+	local iter = self.mibview(k0)
+	local k, v = iter()
+	if k and request.include == 0 and k == k0 then
+		k, v = iter()
+	end
+	if not k then return end
+	local i = 0
+	for k, v in iter() do
+		table.insert(varbind, { name = k, type = v.type, data = v.data })
+		i = i + 1
+		if i > request.max_repetitions then break end
+	end
+	if i < request.max_repetitions then
+		table.insert(varbind, { name = varbind[#t].name, type = VTYPE.endOfMibView })
+	end
+end
+
+function M:_consumer_mibview (request)
+	local status = false
+	local response
+
+	if request._hdr.type == PTYPE.Get then
+		status = true
+		varbind = M:_consumer_mibview_get(request)
+	elseif request._hdr.type == PTYPE.GetNext then
+		status = true
+		varbind = M:_consumer_mibview_getnext(request)
+	elseif request._hdr.type == PTYPE.GetBulk then
+		status = true
+		varbind = M:_consumer_mibview_getnext(request)
+		M:_consumer_mibview_getbulk(request, varbind)
+	end
+
+	if status then
+		for i, v in ipairs(varbind) do
+			if type(v.data) == "function" then
+				v.data = v.data(v)
+			elseif type(v.data) == "thread" then
+				v.data = coroutine.resume(v.data, v)
+			end
+		end
+		response = { varbind = varbind }
+	end
+
+	return status, response
+end
+
 
 function M:_send (msg)
 	assert(socket.send(self.fd, msg) == msg:len())

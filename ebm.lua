@@ -84,8 +84,8 @@ function M:session (t)
 	assert(socket.bind(self.fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(t.iface)}))
 
 	-- handshake *seems* not to be necessary and may be more a check
-	self:send({seq=SEQ.HELLO_CLIENT, status=0, payload="\158\032\0\0\0\0\0"})
-	self:recv()
+	-- self:send({seq=SEQ.HELLO_CLIENT, status=0, payload="\158\032\0\0\0\0\0"})
+	-- self:recv()
 	-- self:send({flags=0x31, payload="\255\255\255\255\0\0\0\0"})
 	-- self:recv()
 	-- self:send({flags=0x31, payload="\110\111\105\097"})
