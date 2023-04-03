@@ -61,6 +61,7 @@ local iftable_copy = {unpack(iftable)}
 table.insert(iftable_copy, 0)
 table.insert(iftable_copy, ifindex)
 
+-- RFC 2863
 local mibview_iftable_load = {
 --	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex },	-- auto-registered by index_allocate
 	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = arg[1] .. ".ebm" },
@@ -71,6 +72,7 @@ local mibview_iftable_load = {
 	[7]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },
 	[8]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },
 	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = 69 },
+	-- see for loop below
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },
 	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }
 }
