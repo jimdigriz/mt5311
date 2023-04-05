@@ -84,6 +84,7 @@ function M:session (t)
 	self.fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(PROTO)))
 	assert(socket.bind(self.fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(t.iface)}))
 
+	-- handshake
 	self:send({seq=SEQ.HELLO_CLIENT, status=0, payload="\158\032\0\0\0\0\0"})
 	self:recv()
 	self:send({flags=0x31, payload="\255\255\255\255\0\0\0\0"})
