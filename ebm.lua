@@ -2,10 +2,11 @@
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
 
-local socket = require "posix.sys.socket"
 local poll = require "posix.poll"
-local unistd = require "posix.unistd"
+local socket = require "posix.sys.socket"
 if socket.AF_PACKET == nil then error("AF_PACKET not available, did you install lua-posix 35.1 or later?") end
+local unistd = require "posix.unistd"
+
 -- https://github.com/iryont/lua-struct
 local status, struct = pcall(function () return require "struct" end)
 if not status then
@@ -56,7 +57,7 @@ function M:session (t)
 		error("missing 'addr' parameter")
 	end
 
-	setmetatable({ __gc = function() M:close() end }, self)
+	setmetatable({}, self)
 	self.__index = self
 
 	self._iface = t.iface
@@ -83,13 +84,12 @@ function M:session (t)
 	self.fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(PROTO)))
 	assert(socket.bind(self.fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(t.iface)}))
 
-	-- handshake *seems* not to be necessary and may be more a check
-	-- self:send({seq=SEQ.HELLO_CLIENT, status=0, payload="\158\032\0\0\0\0\0"})
-	-- self:recv()
-	-- self:send({flags=0x31, payload="\255\255\255\255\0\0\0\0"})
-	-- self:recv()
-	-- self:send({flags=0x31, payload="\110\111\105\097"})
-	-- self:recv()
+	self:send({seq=SEQ.HELLO_CLIENT, status=0, payload="\158\032\0\0\0\0\0"})
+	self:recv()
+	self:send({flags=0x31, payload="\255\255\255\255\0\0\0\0"})
+	self:recv()
+	self:send({flags=0x31, payload="\110\111\105\097"})
+	self:recv()
 
 	return self
 end
