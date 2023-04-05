@@ -164,11 +164,15 @@ function M:recv ()
 
 	local pkt = socket.recv(self.fd, MAXSIZE)
 
-	-- remember to filter on dst (our) macaddr as someone may have the NIC set to promisc
+	-- filter that dst macaddr is us incase the NIC is set to promisc mode
+	if pkt:sub(1, 6) ~= self._addr_local then
+		return self:recv()
+	end
 
 	self._pending = false
 
-	return pkt
+	-- trim ethernet header for now
+	return pkt:sub(15)
 end
 
 return M
