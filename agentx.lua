@@ -748,7 +748,7 @@ function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, context = t.context, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	assert(#t.varbind == 1)	-- more than one is not supported by this library
+	assert(#t.varbind == 1)	-- FIXME support more than one with the auto-registration support
 
 	local session
 	local ifindex
