@@ -21,6 +21,13 @@ if #arg < 2 then
 	os.exit(1)
 end
 
+-- see comment in agentx.lua:index_allocate
+local IFINDEX = os.getenv("IFINDEX")
+if not IFINDEX then
+	math.randomseed(os.time())
+	IFINDEX = 10000 + math.random(10000)
+end
+
 -- duplicate of agentx.lua
 local function macaddr2bytes (v)
 	local macaddr = {v:lower():match("^(%x%x)" .. string.rep("[:-]?(%x%x)", 5) .. "$")}
@@ -56,9 +63,9 @@ local session, err = agentx:session({ name="EBM", cb=agentx_cb })
 if not session then
 	error(err)
 end
--- see comment in agentx.lua:index_allocate
+
 -- local ifindex, err = session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX })
-local ifindex, err = session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, data = 1000 })
+local ifindex, err = session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, data = IFINDEX })
 if not ifindex then
 	error(err)
 end
