@@ -9,8 +9,9 @@ local errno = require "posix.errno"
 local fcntl = require "posix.fcntl"
 local poll = require "posix.poll"
 local socket = require "posix.sys.socket"
-local unistd = require "posix.unistd"
 if socket.AF_PACKET == nil then error("AF_PACKET not available, did you install lua-posix 35.1 or later?") end
+local unistd = require "posix.unistd"
+
 -- https://github.com/iryont/lua-struct
 local status, struct = pcall(function () return require "struct" end)
 if not status then
@@ -144,14 +145,20 @@ function MIBView.mt.__newindex (t, k, v)
 	assert(#k > 0)
 	local o = (getmetatable(k) == MIBView.mt) and k or OID.new(k)
 	for ii, vv in ipairs(t.k) do
-		if vv >= o then
+		if not v and vv == o then
+			table.remove(t.k, ii)
+			table.remove(t.v, ii)
+			return
+		elseif vv >= o then
 			table.insert(t.k, ii, o)
 			table.insert(t.v, ii, v)
 			return
 		end
 	end
-	table.insert(t.k, o)
-	table.insert(t.v, v)
+	if v then
+		table.insert(t.k, o)
+		table.insert(t.v, v)
+	end
 end
 function MIBView.mt.__call (t, k)
 	k = k or {}
@@ -268,12 +275,26 @@ end
 local pdu = { enc = {}, dec = {} }
 
 pdu.enc_hdr = function (s, t)
-	local flags = bit32.bor(t.flags and t.flags or 0x00, FLAGS.NETWORK_BYTE_ORDER)
+	local flags = bit32.bor(t.flags or 0x00, FLAGS.NETWORK_BYTE_ORDER)
+	-- RFC 2741, section 6.1.1
 	local context = ""
-	if s.context then
+	if s.context and
+            (   t.type == PTYPE.Register
+	     or t.type == PTYPE.Unregister
+	     or t.type == PTYPE.AddAgentCaps
+	     or t.type == PTYPE.RemoveAgentCaps
+	     or t.type == PTYPE.Get
+	     or t.type == PTYPE.GetNext
+	     or t.type == PTYPE.GetBulk
+	     or t.type == PTYPE.IndexAllocate
+	     or t.type == PTYPE.IndexDeallocate
+	     or t.type == PTYPE.Notify
+	     or t.type == PTYPE.TestSet
+	     or t.type == PTYPE.Ping) then
 		flags = bit32.bor(flags, FLAGS.NON_DEFAULT_CONTEXT)
 		context = val.enc[VTYPE.OctetString](s.context)
 	end
+	-- RFC 2741, section 6.1
 	return struct.pack(">BBBBIIII", 1, t.type, flags, 0, s.sessionID or 0, s.transactionID or 0, s.packetID, t.payload:len()) .. context .. t.payload
 end
 
@@ -299,7 +320,7 @@ end
 -- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
 pdu.enc[PTYPE.Open] = function (s, t)
 	local deadtime = t.deadtime or 0
-	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc[VTYPE.ObjectIdentifer]({}) .. val.enc[VTYPE.OctetString](t.name)
+	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc[VTYPE.ObjectIdentifer]() .. val.enc[VTYPE.OctetString](t.name)
 	return pdu.enc_hdr(s, {["type"]=PTYPE.Open, payload=payload})
 end
 
@@ -353,7 +374,7 @@ pdu.enc[PTYPE.Register] = function (s, t)
 	if range_subid > 0 then
 		payload = payload .. struct.pack(">I", t.upper_bound)
 	end
-	return pdu.enc_hdr(s, {["type"]=PTYPE.Register, payload=payload})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.Register, payload=payload, flags=t.flags})
 end
 
 pdu.enc[PTYPE.IndexAllocate] = function (s, t)
@@ -369,7 +390,7 @@ pdu.enc[PTYPE.IndexDeallocate] = function (s, t)
 	for i, v in ipairs(t.varbind or {}) do
 		payload = payload .. val.enc[VTYPE._VarBind](v)
 	end
-	return pdu.enc_hdr(s, {["type"]=PTYPE.IndexDeallocate, payload=payload, flags=t.flags})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.IndexDeallocate, payload=payload})
 end
 
 pdu.enc[PTYPE.Response] = function (s, t)
@@ -377,7 +398,7 @@ pdu.enc[PTYPE.Response] = function (s, t)
 	for i, v in ipairs(t.varbind or {}) do
 		payload = payload .. val.enc[VTYPE._VarBind](v)
 	end
-	return pdu.enc_hdr(s, {["type"]=PTYPE.Response, payload=payload, flags=t.flags})
+	return pdu.enc_hdr(s, {["type"]=PTYPE.Response, payload=payload})
 end
 
 pdu.dec[PTYPE.Response] = function (pkt, res)
@@ -712,35 +733,27 @@ end
 
 function M:register (t)
 	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
+	t.flags = bit32.bor(t.flags or 0x00, FLAGS.INSTANCE_REGISTRATION)
 	return self:_request(pdu.enc[PTYPE.Register](session, t))
 end
 
-function M:index_deallocate (t)
-	if t.name then
-		t = { flags = t.flags, context = t.context, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
-	end
-	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
-	local status, result = self:_request(pdu.enc[PTYPE.IndexDeallocate](session, t))
-	if status then
-		for i, v in ipairs(t.varbind) do
-			local iftable = {unpack(v.name)}
-			table.insert(iftable, v.data)
-			self.mibview[iftable] = nil
-		end
-	end
-	return status, result
-end
-
+-- Net-SNMP's snmpd does not seem to provide a usable index allocation response. Though the index allocation
+-- works as you would expect, the Register command seems unwilling to return duplicateRegistration making it
+-- impossible to use the process described in RFC 2741, section 7.1.4.2.2 covering Index Allocation.
+--
+-- This means you are unable to reserve an ifIndex safely for use in IF-MIB::ifTable
+--
+-- For now the only safe(r) strategy is to pick a high non-conflicting number and hope it pans out okay
 function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, context = t.context, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
 	end
-	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
+	assert(#t.varbind == 1)	-- more than one is not supported by this library
 
-	assert(#t.varbind == 1)	-- do not yet support more than one at a time
-
+	local session
 	local ifindex
 	while not ifindex do
+		session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
 		local status, result = self:_request(pdu.enc[PTYPE.IndexAllocate](session, t))
 		if not status then
 			error(result)
@@ -751,15 +764,15 @@ function M:index_allocate (t)
 
 		ifindex = result.varbind[1]
 
-		local iftable = {unpack(ifindex.name)}
-		table.insert(iftable, ifindex.data)
+		local subtree = {unpack(ifindex.name)}
+		table.insert(subtree, ifindex.data)
 
-		status, result = self:register({subtree=iftable})
+		status, result = self:register({ subtree = subtree, context = t.context })
 		if not status then
 			error(result)
 		end
-		if result.err == ERROR.duplicateRegistration then
-			status, result = self:index_deallocate(session, { ["type"] = ifindex.type, name = iftable, data = ifindex.data })
+		if result.error == ERROR.duplicateRegistration then
+			status, result = self:index_deallocate(session, { ["type"] = ifindex.type, name = subtree, data = ifindex.data, context = t.context })
 			if not status then
 				error(result)
 			end
@@ -772,11 +785,27 @@ function M:index_allocate (t)
 		end
 	end
 
-	local iftable = {unpack(ifindex.name)}
-	table.insert(iftable, ifindex.data)
-	self.mibview[iftable] = { ["type"] = ifindex.type, data = ifindex.data }
+	local subtree = {unpack(ifindex.name)}
+	table.insert(subtree, ifindex.data)
+	self.mibview[subtree] = { ["type"] = ifindex.type, data = ifindex.data }
 
 	return ifindex.data
+end
+
+function M:index_deallocate (t)
+	if t.name then
+		t = { flags = t.flags, context = t.context, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
+	end
+	local session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
+	local status, result = self:_request(pdu.enc[PTYPE.IndexDeallocate](session, t))
+	if status then
+		for i, v in ipairs(t.varbind) do
+			local subtree = {unpack(v.name)}
+			table.insert(subtree, v.data)
+			self.mibview[subtree] = nil
+		end
+	end
+	return status, result
 end
 
 return M

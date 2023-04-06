@@ -13,7 +13,7 @@ if not status then
 end
 local status, ebm = pcall(function () return require "ebm" end)
 if not status then
-	struct = assert(loadfile(dir .. "ebm.lua"))()
+	ebm = assert(loadfile(dir .. "ebm.lua"))()
 end
 
 if #arg < 2 then
@@ -39,9 +39,10 @@ end
 -- session:send({reg='linktime'})
 -- print(session:recv())
 
-local iftable = {1,3,6,1,2,1,2,2,1}
+local iftable = {1,3,6,1,2,1,2,2}
 local iftable_ifindex = {unpack(iftable)}
-table.insert(iftable_ifindex, 1)
+table.insert(iftable_ifindex, 1)	-- ifEntry
+table.insert(iftable_ifindex, 1)	-- ifIndex
 
 local ifindex
 local agentx_cb = function (session, request)
@@ -51,15 +52,21 @@ local agentx_cb = function (session, request)
 
 	return response
 end
-local session = agentx:session({name="EBM", cb=agentx_cb})
-local ifindex = session:index_allocate({["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX})
+local session, err = agentx:session({ name="EBM", cb=agentx_cb })
+if not session then
+	error(err)
+end
+-- see comment in agentx.lua:index_allocate
+-- local ifindex, err = session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX })
+local ifindex, err = session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, data = 1000 })
 if not ifindex then
-	error("ifindex")
+	error(err)
 end
 
-local iftable_copy = {unpack(iftable)}
-table.insert(iftable_copy, 0)
-table.insert(iftable_copy, ifindex)
+local iftable_entry = {unpack(iftable)}
+table.insert(iftable_entry, 1)		-- ifEntry
+table.insert(iftable_entry, 0)
+table.insert(iftable_entry, ifindex)
 
 -- RFC 2863
 local mibview_iftable_load = {
@@ -80,12 +87,12 @@ for i=10,20 do
 	mibview_iftable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
 end
 for k, v in pairs(mibview_iftable_load) do
-	iftable_copy[#iftable_copy - 1] = k
-	session.mibview[iftable_copy] = v
+	iftable_entry[#iftable_entry - 1] = k
+	session.mibview[iftable_entry] = v
 end
 
-iftable_copy[#iftable_copy - 1] = 2
-local status, result = session:register({range_subid=#iftable_copy - 1, subtree=iftable_copy, upper_bound=22})
+iftable_entry[#iftable_entry - 1] = 2
+local status, result = session:register({subtree=iftable_entry, range_subid=#iftable_entry - 1, upper_bound=22})
 
 local fds = {
 	[session.fd] = { events = { IN = true } }
