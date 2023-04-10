@@ -5,6 +5,7 @@
 local arg = ...
 
 local register = {}
+local register_inv = {}
 
 local line_count = 0
 local warn = function (msg)
@@ -31,6 +32,7 @@ for line in io.lines(arg[0]:match("^(.-/?)[^/]+.lua$") .. "register.map") do
 				warn("duplicate register")
 			elseif #r == 2 then
 				register[r[1]] = r[2]
+				register_inv[r[2]] = r[1]
 			end
 		else
 			warn("unparsable register value in register.map")
@@ -40,4 +42,4 @@ for line in io.lines(arg[0]:match("^(.-/?)[^/]+.lua$") .. "register.map") do
 	end
 end
 
-return register
+return register, register_inv

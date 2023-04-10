@@ -22,7 +22,7 @@ local vs_mode = {
 	[2]	= "Write"
 }
 
-local vs_register = assert(loadfile(dir .. "register.lua"))(arg)
+local vs_register, vs_register_inv = assert(loadfile(dir .. "register.lua"))(arg)
 
 local REQUEST_ID = {
 	HELLO_CLIENT	= 0x6c360000,

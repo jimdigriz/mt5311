@@ -2,9 +2,11 @@
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
 
-local poll = require "posix.poll"
+local bit32 = require "bit32"
+local clock_gettime = require"posix".clock_gettime
 local socket = require "posix.sys.socket"
 if socket.AF_PACKET == nil then error("AF_PACKET not available, did you install lua-posix 35.1 or later?") end
+local time = require "posix.time"
 local unistd = require "posix.unistd"
 
 local dir = arg[0]:match("^(.-/?)[^/]+.lua$")
@@ -15,16 +17,13 @@ if not status then
 	struct = assert(loadfile(dir .. "struct.lua"))()
 end
 
-local register = assert(loadfile(dir .. "register.lua"))(arg)
+local register, register_inv = assert(loadfile(dir .. "register.lua"))(arg)
 
 local PROTO = 0x6120
 local MAXSIZE = 1500 - 14
 local SEQ = {
 	HELLO_CLIENT	= 0x6c360000,
 	HELLO_SERVER	= 0x6c364556
-}
-local REG = {
-	linktime	= 0x006d35
 }
 
 -- https://stackoverflow.com/a/23596380
@@ -80,21 +79,51 @@ function M:session (t)
 		return nil, "invalid MAC address"
 	end
 
-	self._pending = false
-
-	self._seq = 1
-
 	-- luaposix does not support AF_PACKET/SOCK_DGRAM :(
 	self.fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(PROTO)))
 	assert(socket.bind(self.fd, {family=socket.AF_PACKET, ifindex=socket.if_nametoindex(t.iface)}))
 
+	-- https://github.com/luaposix/luaposix/issues/354
+--	local fdflags = fcntl.fcntl(self.fd, fcntl.F_GETFL)
+--	assert(fcntl.fcntl(self.fd, fcntl.F_SETFL, bit32.bor(fdflags, fcntl.O_NONBLOCK)))
+
+	self._requestID = 0
+	self._requests = {}
+
+	self._producer = self:_producer_co()
+	self._consumer = function (result, cb)
+		local status, response = self:_consumer_mibview(result)
+		if not status then
+			if type(t.cb) == "function" then
+				status, response = pcall(function() return t.cb(result) end)
+			elseif type(t.cb) == "thread" then
+				status, response = coroutine.resume(t.cb, result)
+			end
+		end
+		if status and type(response) == "table" then
+			cb(response)
+		else
+			if not status then
+				io.stderr:write("consumer error: " .. response .. "\n")
+			end
+			cb({ ["error"] = ERROR.processingError })
+		end
+	end
+
 	-- handshake
-	self:send({seq=SEQ.HELLO_CLIENT, status=0, payload="\158\032\0\0\0\0\0"})
-	self:recv()
-	self:send({flags=0x31, payload="\255\255\255\255\0\0\0\0"})
-	self:recv()
-	self:send({flags=0x31, payload="\110\111\105\097"})
-	self:recv()
+	-- TODO check responses
+	local status, result = self:_request({ requestID=SEQ.HELLO_CLIENT, status=0 }, "\158\032\0\0\0\0\0")
+	if not status then
+		error(result)
+	end
+	local status, result = self:_request({ flags = 0x31 }, "\255\255\255\255\0\0\0\0")
+	if not status then
+		error(result)
+	end
+	local status, result = self:_request({ flags = 0x31 }, "\110\111\105\097")
+	if not status then
+		error(result)
+	end
 
 	return self
 end
@@ -104,79 +133,121 @@ function M:close ()
 		unistd.close(self.fd)
 		self.fd = nil
 	end
+	return true
 end
 
-function M:send (t)
-	if self._pending then
-		error("called send whilst pending send not recv'd on")
+function M:process ()
+	local status, result = coroutine.resume(self._producer)
+	if not status then
+		return false, result
 	end
-
-	if not t.flags then
-		t.flags = 0x01
+	if not result then return true end
+	if bit32.band(result.flags, 0xf) == 1 then	-- is a request
+		local requestID = result.requestID == SEQ.HELLO_SERVER and 0 or result.requestID
+		local co = self._requests[requestID].co
+		self._requests[requestID] = nil
+		coroutine.resume(co, result)
+	else
+		error("nyi")
 	end
+	return true
+end
 
-	if not t.seq then
-		t.seq = self._seq
-		self._seq = self._seq + 1
-	end
+function M:_producer_co ()
+	return coroutine.create(function ()
+		while true do
+			local pkt, err = socket.recv(self.fd, MAXSIZE)
+			if not pkt then
+				if err == errno.EAGAIN then
+					coroutine.yield()
+				else
+					error("recv() " .. err)
+				end
+			end
 
-	if not t.status then
-		t.status = 255
-	end
+			-- filter that dst macaddr is us incase the NIC is set to promisc mode
+			if pkt:sub(1, 6) ~= self.addr_local then
+				coroutine.yield()
+			end
 
-	if not t.payload then
-		if t.cmd == nil then
-			t.cmd = 1
+			-- trim ethernet header
+			pkt = pkt:sub(15)
+
+			local res = { data = {} }
+			res.plen, res.flags, res.requestID, res.status = struct.unpack(">HBIB", pkt)
+			pkt = pkt:sub(1, 9)
+
+			if bit32.band(res.flags, 0xf) == 1 then	-- is a request
+				res.plen = res.plen - 6
+			end
+
+			for i=1,res.plen,3 do
+				table.insert(res.data, pkt:sub(i, i + 3))
+			end
+
+			coroutine.yield(res)
 		end
+	end)
+end
 
-		local reg = type(t.reg) == "string" and REG[t.reg] or t.reg
-		if reg == nil then
-			error("unknown reg")
+function M:_request (s, t, cb)
+	local flags = s.flags or 0x01
+	local requestID = s.requestID or self._requestID
+	local status = s.status or 255
+
+	local payload
+	if type(t) == "string" then
+		payload = t
+	else
+		payload = ""
+		for i, v in ipairs(t) do
+			local cmd = v.cmd or 1
+
+			local reg = type(v.reg) == "string" and register_inv[v.reg] or v.reg
+			if reg == nil then
+				error("unknown reg")
+			end
+
+			local reglen = v.reglen or 3
+
+			-- Request Payload: [type (1 byte)][reg (3 bytes)[reglen (2 bytes)]
+			payload = payload .. struct.pack(">Bc3H", cmd, struct.pack(">I", reg):sub(2), reglen)
 		end
-
-		if t.reglen == nil then
-			t.reglen = 3
-		end
-
-		-- Request Payload: [type (1 byte)][reg (3 bytes)[reglen (2 bytes)]
-		t.payload = struct.pack(">Bc3H", t.cmd, struct.pack(">I", reg):sub(2), t.reglen)
 	end
 
 	-- Ethernet: [dst (6 bytes)][src (6 bytes)][proto (2 bytes)]
 	local pkt = struct.pack(">c6c6H", self.addr, self.addr_local, PROTO)
 
 	-- Request Header: [payload len (2 bytes)][flags (1 byte)][seq (4 bytes)][status (1 byte)]
-	pkt = pkt .. struct.pack(">HBIB", t.payload:len(), t.flags, t.seq, t.status) .. t.payload
+	pkt = pkt .. struct.pack(">HBIB", payload:len(), flags, requestID, status) .. payload
 
 	-- Padding
 	pkt = pkt .. string.rep("\0", math.max(0, 64 - pkt:len()))
 
 	assert(socket.send(self.fd, pkt) == pkt:len())
 
-	self._pending = true
-end
+	local status, result
+	local function _cb (...)
+		status = true
+		result = ...
+	end
+	local co = cb and cb or _cb
+	if type(co) == "function" then co = coroutine.create(co) end
 
-function M:recv ()
-	if not self._pending then
-		error("called recv before send")
+	self._requests[self._requestID] = {
+		ts = {clock_gettime(time.CLOCK_MONOTONIC)},
+		co = co
+	}
+	self._requestID = self._requestID + 1
+
+	if not cb then
+		while coroutine.status(co) ~= "dead" do
+			self:process()
+		end
+		return status, result
 	end
 
-	local r = poll.rpoll(self.fd, 100)
-	if r == 0 then
-		return nil, "no response"
-	end
-
-	local pkt = socket.recv(self.fd, MAXSIZE)
-
-	-- filter that dst macaddr is us incase the NIC is set to promisc mode
-	if pkt:sub(1, 6) ~= self.addr_local then
-		return self:recv()
-	end
-
-	self._pending = false
-
-	-- trim ethernet header for now
-	return pkt:sub(15)
+	return co
 end
 
 return M
