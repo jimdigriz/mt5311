@@ -182,7 +182,11 @@ function M:_producer_co ()
 			end
 
 			for i=1,res.plen,3 do
-				table.insert(res.data, pkt:sub(i, i + 3))
+				local data = pkt:sub(i, i + 3)
+				table.insert(res.data, {
+					[1] = data,
+					int = struct.unpack(">I", "\0" .. data)
+				})
 			end
 
 			coroutine.yield(res)
