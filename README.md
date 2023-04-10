@@ -39,6 +39,19 @@ To set up your OS, run:
 
        sudo apt install --no-install-recommends lua5.1 snmpd sudo
 
+   Now edit `/etc/snmp/snmpd.conf` and add the following line:
+
+       # mib-2 interfaces
+       view   systemonly  included   .1.3.6.1.2.1.2
+       # ifMIB
+       view   systemonly  included   .1.3.6.1.2.1.31
+       # vdsl2MIB
+       view   systemonly  included   .1.3.6.1.2.1.10.251
+
+   Restart `snmpd` with:
+
+       sudo systemctl restart snmpd
+
    Now depending on:
 
     * If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET` support)](https://github.com/luaposix/luaposix/releases/tag/v35.1), then run:
@@ -71,9 +84,9 @@ If you are constrained on disk space, you may prefer to use:
     # alternatively use 'luarocks install lua-struct' (*with* hyphen)
     wget https://raw.githubusercontent.com/iryont/lua-struct/master/src/struct.lua
 
-Check the tool is working by running as `root`:
+Check the install was correctly done by running the following as `root`:
 
-    lua /opt/mt5311/snmp.lua IFACE MACADDR -g .1.3.6.1.4.1.59084.6969.1
+    lua /opt/mt5311/snmp-agentx.lua IFACE MACADDR
 
 Where:
 
@@ -82,36 +95,21 @@ Where:
  * **`MACADDR`:** MAC address of the VDSL2 SFP
     * case insensitive and accepts the formats `001122334455`, `00:11:22:33:44:55` and `00-11-22-33-44-55`
 
-It should output almost immediately:
+If there is no error, things are working fine, otherwise recheck that you followed the installation instructions so far correctly.
 
-    ...
+Assuming that you have your SNMP client (and MIBs) correctly set up on your workstation, you should be able to see the EBM 'interface' appear using something like the following commands (you may need to adjust your authentication settings):
 
-**N.B.** `snmp.lua` also supports the non-persist plain `pass` mode of operation which exists in this tool as it is useful for debugging, look to the SNMP manpage for more information on how to use it
+    snmptable -m ALL -v 2c -c public 192.0.2.1 IF-MIB::ifTable
+    snmptable -m ALL -v 2c -c public 192.0.2.1 IF-MIB::ifXTable
+    snmptable -m ALL -v 2c -c public 192.0.2.1 xdsl2LineTable
 
-Now configure `snmpd` to use the Lua script by doing the following (remember to replace `IFACE` and `MACADDR`):
+**N.B.** you may need to adjust your `/etc/snmp/snmpd.conf` on your router for this to work, in particularly the parameters `agentaddress` and `rocommunity`/`rouser`
 
- * **Debian/ (and probably Ubuntu):**
-
-    1. create the file `/etc/sudoers.d/snmpd` and add the following line:
-
-           Cmnd_Alias MT5311SNMP = /usr/bin/lua /opt/mt5311/snmp.lua [a-zA-Z0-9][a-zA-Z0-9.]* [0-9a-fA-F][0-9a-fA-F\:-]*
-           Defaults!MT5311SNMP !requiretty, !lecture
-           Debian-snmp ALL = (root) NOPASSWD:NOEXEC: MT5311SNMP
-
-    1. edit `/etc/snmp/snmpd.conf` and add the following line:
-
-           view systemonly included .1.3.6.1.4.1.59084.6969
-           pass_persist .1.3.6.1.4.1.59084.6969 /usr/bin/sudo /usr/bin/lua /opt/mt5311/snmp.lua IFACE MACADDR
-
- * **OpenWRT:**
-
-    1. edit `/etc/snmp/snmpd.conf` and add the following line:
-
-           pass_persist .1.3.6.1.4.1.59084.6969 /usr/bin/env lua /opt/mt5311/snmp.lua IFACE MACADDR
+...
 
 ## Wireshark
 
-To use a basic Ethernet Boot & Management (EBM) protocol dissector:
+To use a basic Ethernet Boot & Management (EBM) protocol dissectoru:
 
     sudo tcpdump -n -i eth0 'ether proto 0x6120' -w - -U | tee dump.pcap | tcpdump -r - -n -v
     wireshark -X lua_script:dissector.lua dump.pcap

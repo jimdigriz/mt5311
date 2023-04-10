@@ -7,11 +7,15 @@ local socket = require "posix.sys.socket"
 if socket.AF_PACKET == nil then error("AF_PACKET not available, did you install lua-posix 35.1 or later?") end
 local unistd = require "posix.unistd"
 
+local dir = arg[0]:match("^(.-/?)[^/]+.lua$")
+
 -- https://github.com/iryont/lua-struct
 local status, struct = pcall(function () return require "struct" end)
 if not status then
-	struct = assert(loadfile(arg[0]:match("^(.-/?)[^/]+.lua$") .. "struct.lua"))()
+	struct = assert(loadfile(dir .. "struct.lua"))()
 end
+
+local register = assert(loadfile(dir .. "register.lua"))(arg)
 
 local PROTO = 0x6120
 local MAXSIZE = 1500 - 14
@@ -60,19 +64,19 @@ function M:session (t)
 	setmetatable({}, self)
 	self.__index = self
 
-	self._iface = t.iface
+	self.iface = t.iface
 
 	-- luaposix does not support ioctl(fd, SIOCGIFHWADDR, &s))
-	local macaddr = io.open("/sys/class/net/" .. self._iface .. "/address")
+	local macaddr = io.open("/sys/class/net/" .. self.iface .. "/address")
 	if not macaddr then
 		return nil, "invalid iface"
 	end
-	self._addr_local = macaddr2bytes(macaddr:read())
-	assert(self._addr_local)
+	self.addr_local = macaddr2bytes(macaddr:read())
+	assert(self.addr_local)
 	macaddr:close()
 
-	self._addr = macaddr2bytes(t.addr)
-	if not self._addr then
+	self.addr = macaddr2bytes(t.addr)
+	if not self.addr then
 		return nil, "invalid MAC address"
 	end
 
@@ -139,7 +143,7 @@ function M:send (t)
 	end
 
 	-- Ethernet: [dst (6 bytes)][src (6 bytes)][proto (2 bytes)]
-	local pkt = struct.pack(">c6c6H", self._addr, self._addr_local, PROTO)
+	local pkt = struct.pack(">c6c6H", self.addr, self.addr_local, PROTO)
 
 	-- Request Header: [payload len (2 bytes)][flags (1 byte)][seq (4 bytes)][status (1 byte)]
 	pkt = pkt .. struct.pack(">HBIB", t.payload:len(), t.flags, t.seq, t.status) .. t.payload
@@ -165,7 +169,7 @@ function M:recv ()
 	local pkt = socket.recv(self.fd, MAXSIZE)
 
 	-- filter that dst macaddr is us incase the NIC is set to promisc mode
-	if pkt:sub(1, 6) ~= self._addr_local then
+	if pkt:sub(1, 6) ~= self.addr_local then
 		return self:recv()
 	end
 

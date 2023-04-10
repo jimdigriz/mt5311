@@ -1,8 +1,16 @@
 #!/usr/bin/env lua
 
--- EBM SNMP Agent
+-- EBM SNMP Subagent - Pass/PassPersist implementation
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
+
+-- This is a DEADEND and there is nothing useful here EBM related
+-- though you may be interested in a Lua SNMP pass implementation
+-- which this now remains as an example of
+
+-- When '-[gns]' is *not* passed, the agent runs in persist mode
+-- otherwise the non-persist mode is useful for quick one shot
+-- debugging runs during development
 
 local dir = arg[0]:match("^(.-/?)[^/]+.lua$")
 -- https://github.com/iryont/lua-struct
@@ -24,15 +32,6 @@ local session, err = ebm:session({iface=arg[1], addr=arg[2]})
 if err then
 	error(err)
 end
-
-session:send({reg='linktime'})
-local pkt, err = session:recv()
-if not pkt then
-	error(err)
-end
-local linktime = struct.unpack(">I", "\0" .. pkt:sub(9, 9 + 3))
-print(linktime)
-os.exit(0)
 
 -- integer, gauge, counter, timeticks, ipaddress, objectid, or string
 local function do_get(oid)

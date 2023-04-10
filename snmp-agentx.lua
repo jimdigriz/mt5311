@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
--- EBM SNMP subagent
+-- EBM SNMP Subagent - AgentX implementation
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
 
@@ -28,44 +28,33 @@ if not IFINDEX then
 	IFINDEX = 10000 + math.random(10000)
 end
 
--- duplicate of agentx.lua
-local function macaddr2bytes (v)
-	local macaddr = {v:lower():match("^(%x%x)" .. string.rep("[:-]?(%x%x)", 5) .. "$")}
-	if #macaddr ~= 6 then
-		return nil
-	end
-	for i, v in ipairs(macaddr) do
-		macaddr[i] = string.char(tonumber(v, 16))
-	end
-	macaddr = table.concat(macaddr, "")
-	return macaddr
+local ebm_session = ebm:session({iface=arg[1], addr=arg[2]})
+if not ebm_session then
+	error(err)
 end
 
-
--- local session = ebm:session({iface=arg[1], addr=arg[2]})
--- session:send({reg='linktime'})
--- print(session:recv())
-
 local iftable = {1,3,6,1,2,1,2,2}
+local vdsl2MIB = {1,3,6,1,2,1,10,251}
+
 local iftable_ifindex = {unpack(iftable)}
 table.insert(iftable_ifindex, 1)	-- ifEntry
 table.insert(iftable_ifindex, 1)	-- ifIndex
 
 local ifindex
-local agentx_cb = function (session, request)
+local ax_cb = function (session, request)
 	local response
 
 	io.stderr:write("nyi, " .. tostring(request._hdr.type) .. "\n")
 
 	return response
 end
-local session, err = agentx:session({ name="EBM", cb=agentx_cb })
-if not session then
+local ax_session, err = agentx:session({ name="EBM", cb=ax_cb })
+if not ax_session then
 	error(err)
 end
 
--- local ifindex, err = session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX })
-local ifindex, err = session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, data = IFINDEX })
+-- local ifindex, err = ax_session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX })
+local ifindex, err = ax_session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, data = IFINDEX })
 if not ifindex then
 	error(err)
 end
@@ -75,34 +64,38 @@ table.insert(iftable_entry, 1)		-- ifEntry
 table.insert(iftable_entry, 0)
 table.insert(iftable_entry, ifindex.data)
 
--- RFC 2863
+-- RFC 5650, section 2.1.1
 local mibview_iftable_load = {
---	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex.data },	-- auto-registered by index_allocate
-	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = arg[1] .. ".ebm" },
-	[3]	= { ["type"] = agentx.VTYPE.Integer, data = 97 },
-	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },
-	[5]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },
-	[6]	= { ["type"] = agentx.VTYPE.OctetString, data = macaddr2bytes(arg[2]) },
-	[7]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },
-	[8]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },
-	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = 69 },
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex.data },			-- ifIndex: auto-registered by index_allocate
+	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = ebm_session.iface .. ".ebm" },	-- ifDescr
+	[3]	= { ["type"] = agentx.VTYPE.Integer, data = vdsl2MIB[#vdsl2MIB] },		-- ifType
+	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },				-- ifMtu
+	[5]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },				-- ifSpeed
+	[6]	= { ["type"] = agentx.VTYPE.OctetString, data = ebm_session.addr },		-- ifPhysAddress
+	[7]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifAdminStatus
+	[8]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifOperStatus
+	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = 69 },				-- ifLastChange
 	-- see for loop below
-	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },
-	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }
+	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },				-- ifOutQLen (deprecated)
+	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }			-- ifSpecific (deprecated)
 }
+-- ifInOctets, ifInUcastPkts, ifInNUcastPkts (deprecated), ifInDiscards, ifInErrors, ifInUnknownProtos, ifOutOctets, ifOutUcastPkts, ifOutNUcastPkts (deprecated), ifOutDiscards, ifOutErrors
 for i=10,20 do
 	mibview_iftable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
 end
 for k, v in pairs(mibview_iftable_load) do
 	iftable_entry[#iftable_entry - 1] = k
-	session.mibview[iftable_entry] = v
+	ax_session.mibview[iftable_entry] = v
 end
 
 iftable_entry[#iftable_entry - 1] = 2
-local status, result = session:register({subtree=iftable_entry, range_subid=#iftable_entry - 1, upper_bound=22})
+local status, result = ax_session:register({subtree=iftable_entry, range_subid=#iftable_entry - 1, upper_bound=22})
+
+-- TODO register ifStack too
+
 
 local fds = {
-	[session.fd] = { events = { IN = true } }
+	[ax_session.fd] = { events = { IN = true } }
 }
 while true do
 	local status, err = pcall(function() return poll.poll(fds) end)
@@ -112,10 +105,10 @@ while true do
 	for k, v in pairs(fds) do
 		local err
 		if v.revents.IN then
-			if k == session.fd then
-				status, err = session:process()
+			if k == ax_session.fd then
+				status, err = ax_session:process()
 			else
-				status, err = ebm:process()
+				status, err = ebm_session:process()
 			end
 			if not status then
 				error(err)
@@ -129,4 +122,5 @@ while true do
 	end
 end
 
-session:close()
+ax_session:close()
+ebm_session:close()

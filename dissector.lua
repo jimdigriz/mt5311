@@ -9,6 +9,9 @@
 --
 -- Assumptions are codified with expert.group.ASSUMPTION
 
+arg = { [0] = __DIR__ .. (__DIR__:len() > 0 and __DIR_SEPARATOR__ or "") .. "dissector.lua" }
+local dir = arg[0]:match("^(.-/?)[^/]+.lua$")
+
 local vs_dir = {
 	[1]	= "Response",
 	[2]	= "Request"
@@ -19,44 +22,7 @@ local vs_mode = {
 	[2]	= "Write"
 }
 
-local vs_register = {}
-function read_register_map ()
-	local status
-
-	local line_count = 0
-	local warn = function (msg)
-		print("mt5311 dissector.lua: line " .. tostring(line_count) .. " " .. msg .. ", ignoring")
-	end
-	for line in io.lines(__DIR__ .. (__DIR__:len() > 0 and __DIR_SEPARATOR__ or "") .. "register.map") do
-		line_count = line_count + 1
-
-		line = line:gsub("#.*$", "")
-		line = line:gsub("^%s+", ""):gsub("%s+$", "")
-
-		local r = {}
-		if #line > 0 then
-			for v in (line .. "\t"):gmatch("[^\t]*\t") do
-				r[#r + 1] = v:sub(1, -2)
-			end
-		end
-
-		if #r == 1 or #r == 2 then
-			status, r[1] = pcall(function () return tonumber(r[1]) end)
-			if status then
-				if vs_register[r[1]] then
-					warn("duplicate register")
-				elseif #r == 2 then
-					vs_register[r[1]] = r[2]
-				end
-			else
-				warn("unparsable register value in register.map")
-			end
-		elseif #r ~= 0 then
-				warn("unparsable in register.map")
-		end
-	end
-end
-read_register_map()
+local vs_register = assert(loadfile(dir .. "register.lua"))(arg)
 
 local REQUEST_ID = {
 	HELLO_CLIENT	= 0x6c360000,
