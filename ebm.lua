@@ -92,21 +92,18 @@ function M:session (t)
 
 	self._producer = self:_producer_co()
 	self._consumer = function (result, cb)
-		local status, response = self:_consumer_mibview(result)
-		if not status then
-			if type(t.cb) == "function" then
-				status, response = pcall(function() return t.cb(result) end)
-			elseif type(t.cb) == "thread" then
-				status, response = coroutine.resume(t.cb, result)
+		if status then
+			if type(response) == "function" then
+				status, response = pcall(function() return response(result) end)
+			end
+			if type(response) == "thread" then
+				status, response = coroutine.resume(response, result)
 			end
 		end
 		if status and type(response) == "table" then
 			cb(response)
 		else
-			if not status then
-				io.stderr:write("consumer error: " .. response .. "\n")
-			end
-			cb({ ["error"] = ERROR.processingError })
+			error("consumer error: " .. response)
 		end
 	end
 
@@ -136,20 +133,20 @@ function M:close ()
 	return true
 end
 
+function M:read (t, cb)
+	return M:_request({}, t, cb)
+end
+
 function M:process ()
 	local status, result = coroutine.resume(self._producer)
 	if not status then
 		return false, result
 	end
 	if not result then return true end
-	if bit32.band(result.flags, 0xf) == 1 then	-- is a request
-		local requestID = result.requestID == SEQ.HELLO_SERVER and 0 or result.requestID
-		local co = self._requests[requestID].co
-		self._requests[requestID] = nil
-		coroutine.resume(co, result)
-	else
-		error("nyi")
-	end
+	local requestID = result.requestID == SEQ.HELLO_SERVER and 0 or result.requestID
+	local co = self._requests[requestID].co
+	self._requests[requestID] = nil
+	coroutine.resume(co, result)
 	return true
 end
 
@@ -174,17 +171,20 @@ function M:_producer_co ()
 			pkt = pkt:sub(15)
 
 			local res = { data = {} }
-			res.plen, res.flags, res.requestID, res.status = struct.unpack(">HBIB", pkt)
-			pkt = pkt:sub(1, 9)
 
-			if bit32.band(res.flags, 0xf) == 1 then	-- is a request
+			res.plen, res.flags, res.requestID, res.status = struct.unpack(">HBIB", pkt)
+			pkt = pkt:sub(9)
+
+			if bit32.band(res.flags, 0x80) ~= 0 then	-- is a response
 				res.plen = res.plen - 6
 			end
 
+			assert(pkt:len() >= res.plen)
+
 			for i=1,res.plen,3 do
-				local data = pkt:sub(i, i + 3)
+				local data = pkt:sub(i, i + 2)
 				table.insert(res.data, {
-					[1] = data,
+					str = data,
 					int = struct.unpack(">I", "\0" .. data)
 				})
 			end
@@ -204,7 +204,11 @@ function M:_request (s, t, cb)
 		payload = t
 	else
 		payload = ""
+
+		t = t.cmd and { t } or t
 		for i, v in ipairs(t) do
+			v = (type(v) == "string") and { reg = v } or v
+
 			local cmd = v.cmd or 1
 
 			local reg = type(v.reg) == "string" and register_inv[v.reg] or v.reg

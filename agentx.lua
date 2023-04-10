@@ -317,7 +317,6 @@ pdu.dec_hdr = function (pkt)
 	}
 end
 
--- https://datatracker.ietf.org/doc/html/rfc2741#section-6.2.1
 pdu.enc[PTYPE.Open] = function (s, t)
 	local deadtime = t.deadtime or 0
 	local payload = struct.pack(">B", deadtime) .. "\0\0\0" .. val.enc[VTYPE.ObjectIdentifer]() .. val.enc[VTYPE.OctetString](t.name)
@@ -450,10 +449,12 @@ function M:session (t)
 	self._consumer = function (result, cb)
 		local status, response = self:_consumer_mibview(result)
 		if not status then
-			if type(t.cb) == "function" then
-				status, response = pcall(function() return t.cb(result) end)
-			elseif type(t.cb) == "thread" then
-				status, response = coroutine.resume(t.cb, result)
+			response = t.cb
+			if type(response) == "function" then
+				status, response = pcall(function() return response(result) end)
+			end
+			if type(response) == "thread" then
+				status, response = coroutine.resume(response, result)
 			end
 		end
 		if status and type(response) == "table" then
@@ -516,8 +517,9 @@ function M:process ()
 		self._requests[result._hdr.packetID] = nil
 		coroutine.resume(co, result)
 	else
+		local hdr = { sessionID = result._hdr.sessionID, packetID = result._hdr.packetID, context = result._hdr.context }
 		local cb = function (res)
-			self:_send(pdu.enc[PTYPE.Response](result._hdr, res))
+			self:_send(pdu.enc[PTYPE.Response](hdr, res))
 		end
 		self._consumer(result, cb)
 	end
@@ -690,10 +692,18 @@ function M:_consumer_mibview (request)
 
 	if status then
 		for i, v in ipairs(varbind) do
+			local status
 			if type(v.data) == "function" then
-				v.data = v.data(v)
-			elseif type(v.data) == "thread" then
-				v.data = coroutine.resume(v.data, v)
+				status, v.data = pcall(function() return v.data(v) end)
+				if not status then
+					error(v.data)
+				end
+			end
+			if type(v.data) == "thread" then
+				status, v.data = coroutine.resume(v.data, v)
+				if not status then
+					error(v.data)
+				end
 			end
 		end
 		response = { varbind = varbind }

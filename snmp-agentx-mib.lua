@@ -12,10 +12,34 @@ table.insert(iftable_entry, 1)		-- ifEntry
 table.insert(iftable_entry, 0)
 table.insert(iftable_entry, ifindex.data)
 
+local iftableMIB = {}
+iftableMIB.ifDescr = function (request)
+	return coroutine.create(function()
+		local status, result = ebm:read({
+			"CPE Vendor ID (and SpecInfo) [SI1,SI0,0]",
+			"CPE Vendor ID [1:3]",
+			"CPE Inventory Version [0:2]",
+			"CPE Inventory Version [3:5]",
+			"CPE Inventory Version [6:8]",
+			"CPE Inventory Version [9:11]",
+			"CPE Inventory Version [12:14]",
+			"CPE Inventory Version [15:17]"
+		})
+		if not status then
+			error(result)
+		end
+		local ifdescr = ""
+		for i, v in ipairs(result.data) do
+			ifdescr = ifdescr .. v.str
+		end
+		return ifdescr:sub(3, 3 + 3) .. " " .. ifdescr:sub(3 + 3 + 1, -3)
+	end)
+end
+
 -- RFC 5650, section 2.1.1
 local mibview_iftable_load = {
 --	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex.data },			-- ifIndex: auto-registered by index_allocate
-	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = ebm_session.iface .. ".ebm" },	-- ifDescr
+	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = iftableMIB.ifDescr },		-- ifDescr
 	[3]	= { ["type"] = agentx.VTYPE.Integer, data = vdsl2MIB[#vdsl2MIB] },		-- ifType
 	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },				-- ifMtu
 	[5]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },				-- ifSpeed

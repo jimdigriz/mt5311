@@ -85,8 +85,6 @@ while true do
 			v.revents.IN = false
 		elseif v.revents.HUP then
 			error("nyi")
-		else
-			error("nyi")
 		end
 	end
 end

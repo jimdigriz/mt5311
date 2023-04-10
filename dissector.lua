@@ -127,11 +127,11 @@ function proto.dissector (tvb, pinfo, tree)
 	--
 	--    D (Direction)
 	--
-	--       0 - Response
+	--       0 - Request
 	--
 	--           Note: if Request Id is a magic number D = 0 always
 	--
-	--       1 - Request
+	--       1 - Response
 	--
 	--    M (Mode)
 	--
