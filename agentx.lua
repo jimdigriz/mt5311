@@ -789,7 +789,7 @@ function M:index_allocate (t)
 	table.insert(subtree, ifindex.data)
 	self.mibview[subtree] = { ["type"] = ifindex.type, data = ifindex.data }
 
-	return ifindex.data
+	return ifindex
 end
 
 function M:index_deallocate (t)

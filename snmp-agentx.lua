@@ -73,11 +73,11 @@ end
 local iftable_entry = {unpack(iftable)}
 table.insert(iftable_entry, 1)		-- ifEntry
 table.insert(iftable_entry, 0)
-table.insert(iftable_entry, ifindex)
+table.insert(iftable_entry, ifindex.data)
 
 -- RFC 2863
 local mibview_iftable_load = {
---	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex },	-- auto-registered by index_allocate
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex.data },	-- auto-registered by index_allocate
 	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = arg[1] .. ".ebm" },
 	[3]	= { ["type"] = agentx.VTYPE.Integer, data = 97 },
 	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },
