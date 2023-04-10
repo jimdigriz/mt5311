@@ -78,6 +78,7 @@ function M:session (t)
 	if not self.addr then
 		return nil, "invalid MAC address"
 	end
+	self.addr_print = t.addr:gsub("[:-]", ""):lower()
 
 	-- luaposix does not support AF_PACKET/SOCK_DGRAM :(
 	self.fd = assert(socket.socket(socket.AF_PACKET, socket.SOCK_RAW, htons(PROTO)))
@@ -184,7 +185,7 @@ function M:_producer_co ()
 			for i=1,res.plen,3 do
 				local data = pkt:sub(i, i + 2)
 				table.insert(res.data, {
-					str = data,
+					raw = data,
 					int = struct.unpack(">I", "\0" .. data)
 				})
 			end

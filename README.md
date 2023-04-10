@@ -101,7 +101,7 @@ Assuming that you have your SNMP client (and MIBs) correctly set up on your work
 
     snmptable -m ALL -v 2c -c public 192.0.2.1 IF-MIB::ifTable
     snmptable -m ALL -v 2c -c public 192.0.2.1 IF-MIB::ifXTable
-    snmptable -m ALL -v 2c -c public 192.0.2.1 xdsl2LineTable
+    snmptable -m ALL -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineTable
 
 **N.B.** you may need to adjust your `/etc/snmp/snmpd.conf` on your router for this to work, in particularly the parameters `agentaddress` and `rocommunity`/`rouser`
 
