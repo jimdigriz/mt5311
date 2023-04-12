@@ -105,6 +105,8 @@ Assuming that you have your SNMP client (and MIBs) correctly set up on your work
 
 **N.B.** you may need to adjust your `/etc/snmp/snmpd.conf` on your router for this to work, in particularly the parameters `agentaddress` and `rocommunity`/`rouser`
 
+**N.B.** [ignore the warnings `Wrong Type (should be BITS): Opaque: 1234`](https://github.com/jimdigriz/mt5311/issues/1)
+
 ...
 
 ## Wireshark
