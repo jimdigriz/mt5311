@@ -43,6 +43,21 @@ function Wheel.new ()
 	rawset(w, 'next', function ()
 		return (#w._k > 0) and math.max(0, w._k[1] - w._now()) or nil
 	end)
+	rawset(w, 'fire', function ()
+		local t = w._now()
+		for i=#w._k,1,-1 do
+			if w._k[i] > t then
+				break
+			end
+			if type(w._v[i]) == "function" then
+				pcall(function() return w._v[i]() end)
+			elseif type(w._v[i]) == "thread" then
+				coroutine.resume(w._v[i])
+			end
+			table.remove(w._k, i)
+			table.remove(w._v, i)
+		end
+	end)
 
 	return w
 end
@@ -63,21 +78,6 @@ function Wheel.mt.__newindex (w, k, v)
 				break
 			end
 		end
-	end
-end
-function Wheel.mt.__call (w)
-	local t = w._now()
-	for i=#w._k,1,-1 do
-		if w._k[i] > t then
-			break
-		end
-		if type(w._v[i]) == "function" then
-			pcall(function() return w._v[i]() end)
-		elseif type(w._v[i]) == "thread" then
-			coroutine.resume(w._v[i])
-		end
-		table.remove(w._k, i)
-		table.remove(w._v, i)
 	end
 end
 
@@ -127,7 +127,7 @@ while true do
 		error(ret)
 	end
 	if ret == 0 then
-		wheel()
+		wheel.fire()
 	end
 	for k, v in pairs(fds) do
 		if v.revents then
