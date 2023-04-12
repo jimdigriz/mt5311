@@ -22,7 +22,7 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
 
 **N.B.** WORK IN PROGRESS, NOT COMPLETE, NOT USABLE
 
-An [AgentX subagent](https://datatracker.ietf.org/doc/html/rfc2741) where possible implements the following MIBs:
+An [AgentX subagent](https://datatracker.ietf.org/doc/html/rfc2741) that where possible implements the following MIBs:
 
  * [RFC 5650](https://datatracker.ietf.org/doc/html/rfc5650) - Definitions of Managed Objects for Very High Speed Digital Subscriber Line 2 (VDSL2)
     * [RFC 3728](https://datatracker.ietf.org/doc/html/rfc3728) - Definitions of Managed Objects for Very High Speed Digital Subscriber Lines (VDSL)

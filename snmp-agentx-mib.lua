@@ -2,7 +2,7 @@
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
 
-local agentx, ax_session, ifindex, ebm, ebm_session = ...
+local agentx, ax_session, ifindex, ebm, ebm_session, wheel = ...
 
 local bit32 = require "bit32"
 
@@ -52,11 +52,16 @@ iftableMIB.ifOperStatus = function (request)
 		return ((bit32.band(result[1].int, 0x00ff00) / 256) == 3) and 1 or 2	-- SHOWTIME?
 	end)
 end
+local function ifLastChange_wheel ()
+	ebm:read({ "Link Time" }, coroutine.create(function(result)
+		iftableMIB._ifLastChange = result.data[1].int
+		wheel[1000] = ifLastChange_wheel
+	end))
+end
+ifLastChange_wheel()
+wheel[1000] = ifLastChange_wheel
 iftableMIB.ifLastChange = function (request)
-	return coroutine.create(function ()
-		local result = ebm_read({ "Link Time" })
-		return result[1].int * 100
-	end)
+	return iftableMIB._ifLastChange * 100
 end
 
 -- RFC 5650, section 2.1.1
@@ -159,6 +164,25 @@ xdsl2LineTableMIB.xdsl2LineStatusActProfile = function (request)
 		return result[1].raw:sub(3, 3)
 	end)
 end
+xdsl2LineTableMIB.xdsl2LineStatusActLimitMask = function (request)
+	return coroutine.create(function ()
+		local result = ebm_read({
+			"xdslVdsl2ProfilesLimit8a",
+			-- "xdslVdsl2ProfilesLimit8b",
+			-- "xdslVdsl2ProfilesLimit8c",
+			-- "xdslVdsl2ProfilesLimit8d",
+			"xdslVdsl2ProfilesLimit12a",
+			-- "xdslVdsl2ProfilesLimit12b",
+			"xdslVdsl2ProfilesLimit17a",
+			"xdslVdsl2ProfilesLimit30a",
+		})
+		local bits = ""
+		for i, v in ipairs(result) do
+			bits = bits .. result[1].raw:sub(2, 3)
+		end
+		return bits
+	end)
+end
 xdsl2LineTableMIB.xdsl2LineStatusElectricalLength = function (request)	-- FIXME convert m to 0.1db
 	return coroutine.create(function ()
 		local result = ebm_read({ "xdsl2LineStatusElectricalLength" })
@@ -184,6 +208,7 @@ local mibview_xdsl2LineTable_load = {
 	[20]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusAttainableRateDs },	-- xdsl2LineStatusAttainableRateDs
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusAttainableRateUs },	-- xdsl2LineStatusAttainableRateUs
 	[26]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusActProfile },		-- xdsl2LineStatusActProfile (Issue #1)
+	[26]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusActLimitMask },		-- xdsl2LineStatusActLimitMask (Issue #1)
 	[31]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusElectricalLength },	-- xdsl2LineStatusElectricalLength
 	[36]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineTableMIB.xdsl2LineStatusTrellisDs },		-- xdsl2LineStatusTrellisDs
 	[37]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineTableMIB.xdsl2LineStatusTrellisUs },		-- xdsl2LineStatusTrellisUs
