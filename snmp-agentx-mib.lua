@@ -74,10 +74,6 @@ local mibview_iftable_load = {
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },				-- ifOutQLen (deprecated)
 	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }			-- ifSpecific (deprecated)
 }
--- ifInOctets, ifInUcastPkts, ifInNUcastPkts (deprecated), ifInDiscards, ifInErrors, ifInUnknownProtos, ifOutOctets, ifOutUcastPkts, ifOutNUcastPkts (deprecated), ifOutDiscards, ifOutErrors
---for i=10,20 do
---	mibview_iftable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
---end
 
 local iftable_entry = {unpack(iftable)}
 table.insert(iftable_entry, 1)		-- ifEntry
@@ -99,16 +95,13 @@ end
 
 local ifXtableMIB = {}
 ifXtableMIB.ifName = function (request)
-	return "ebm." .. tostring(ifindex.data) .. "@" .. ebm_session.iface
+	return "ebm" .. ebm_session.addr_print .. "@" .. ebm_session.iface
 end
 ifXtableMIB.ifHighSpeed = function (request)
 	return coroutine.create(function ()
 		local result = ebm_read({ "xdsl2LineStatusAttainableRateDs" })
 		return math.floor(result[1].int / 1000)
 	end)
-end
-ifXtableMIB.ifAlias = function (request)
-	return "ebm." .. ebm_session.iface .. "." .. ebm_session.addr_print
 end
 
 -- RFC 5650, section 2.1.1
@@ -117,7 +110,6 @@ local mibview_ifxtable_load = {
 	[15]	= { ["type"] = agentx.VTYPE.Gauge32, data = ifXtableMIB.ifHighSpeed },		-- ifHighSpeed
 	[14]	= { ["type"] = agentx.VTYPE.Integer, data = 2 },				-- ifLinkUpDownTrapEnable (FIXME: should be enabled)
 	[17]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifConnectorPresent (FIXME: poll SFP)
-	[18]	= { ["type"] = agentx.VTYPE.OctetString, data = ifXtableMIB.ifAlias },		-- ifAlias
 }
 
 local ifxtable_entry = {unpack(ifxtable)}
@@ -188,10 +180,10 @@ end
 
 -- RFC 5650, section 3
 local mibview_xdsl2LineTable_load = {
-	[13]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusXtuTransSys },		-- xdsl2LineStatusXtuTransSys
+	[13]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusXtuTransSys },		-- xdsl2LineStatusXtuTransSys (Issue #1)
 	[20]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusAttainableRateDs },	-- xdsl2LineStatusAttainableRateDs
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusAttainableRateUs },	-- xdsl2LineStatusAttainableRateUs
-	[26]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusActProfile },		-- xdsl2LineStatusActProfile
+	[26]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusActProfile },		-- xdsl2LineStatusActProfile (Issue #1)
 	[31]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusElectricalLength },	-- xdsl2LineStatusElectricalLength
 	[36]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineTableMIB.xdsl2LineStatusTrellisDs },		-- xdsl2LineStatusTrellisDs
 	[37]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineTableMIB.xdsl2LineStatusTrellisUs },		-- xdsl2LineStatusTrellisUs
