@@ -23,7 +23,7 @@ if #arg < 2 then
 	os.exit(1)
 end
 
--- see comment in agentx.lua:index_allocate
+-- see issue #2
 local IFINDEX = os.getenv("IFINDEX")
 if not IFINDEX then
 	math.randomseed(os.time())

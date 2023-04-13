@@ -760,13 +760,6 @@ function M:register (t)
 	return self:_request(pdu.enc[PTYPE.Register](session, t))
 end
 
--- Net-SNMP's snmpd does not seem to provide a usable index allocation response. Though the index allocation
--- works as you would expect, the Register command seems unwilling to return duplicateRegistration making it
--- impossible to use the process described in RFC 2741, section 7.1.4.2.2 covering Index Allocation.
---
--- This means you are unable to reserve an ifIndex safely for use in IF-MIB::ifTable
---
--- For now the only safe(r) strategy is to pick a high non-conflicting number and hope it pans out okay
 function M:index_allocate (t)
 	if t.name then
 		t = { flags = t.flags, context = t.context, varbind = { { ["type"] = t.type, name = t.name, data = t.data } } }
