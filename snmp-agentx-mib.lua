@@ -61,7 +61,7 @@ end
 linktime_wheel()
 wheel[1000] = linktime_wheel
 iftableMIB.ifLastChange = function (request)
-	return ax_session:sysUpTime() - (iftableMIB._linktime * 100)
+	return math.max(0, ax_session:sysUpTime() - (iftableMIB._linktime * 100))
 end
 
 -- RFC 5650, section 2.1.1
