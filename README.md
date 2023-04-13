@@ -77,8 +77,10 @@ If you are constrained on disk space, you may prefer to use:
     mkdir -p /opt/mt5311
     cd /opt/mt5311
     wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp-agentx.lua
+    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp-agentx-mib.lua
     wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/agentx.lua
     wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/ebm.lua
+    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/register.lua
     # alternatively use 'luarocks install lua-struct' (*with* hyphen)
     wget https://raw.githubusercontent.com/iryont/lua-struct/master/src/struct.lua
 
