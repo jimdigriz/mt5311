@@ -5,11 +5,13 @@
 -- https://datatracker.ietf.org/doc/html/rfc2741
 
 local bit32 = require "bit32"
+local clock_gettime = require"posix".clock_gettime
 local errno = require "posix.errno"
 local fcntl = require "posix.fcntl"
 local poll = require "posix.poll"
 local socket = require "posix.sys.socket"
 if socket.AF_PACKET == nil then error("AF_PACKET not available, did you install lua-posix 35.1 or later?") end
+local time = require "posix.time"
 local unistd = require "posix.unistd"
 
 -- https://github.com/iryont/lua-struct
@@ -95,6 +97,11 @@ local REASON = {
 	shutdown		= 5,
 	byManager		= 6
 }
+
+local function now ()
+	local n = {clock_gettime(time.CLOCK_MONOTONIC)}
+	return (n[1] * 100) + math.floor((n[2] / 1000 / 1000 / 10))
+end
 
 local OID = { mt = {} }
 function OID.new (t)
@@ -477,6 +484,8 @@ function M:session (t)
 	end
 
 	self._sessionID = result._hdr.sessionID
+	self._sysUpTime = result.sysUpTime
+	self._sysUpTimeNow = now()
 
 	self.mibview = MIBView.new()
 
@@ -524,6 +533,10 @@ function M:process ()
 		self._consumer(result, cb)
 	end
 	return true
+end
+
+function M:sysUpTime (v)
+	return self._sysUpTime + (now() - self._sysUpTimeNow)
 end
 
 function M:_producer_co ()

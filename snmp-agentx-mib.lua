@@ -10,8 +10,8 @@ local iftable = {1,3,6,1,2,1,2,2}
 local ifxtable = {1,3,6,1,2,1,31,1,1}
 local vdsl2MIB = {1,3,6,1,2,1,10,251}
 
-local function ebm_read (regs)
-	local status, result = ebm:read(regs)
+local function ebm_session_read (regs)
+	local status, result = ebm_session:read(regs)
 	if not status then
 		error(result)
 	end
@@ -23,7 +23,7 @@ end
 local iftableMIB = {}
 iftableMIB.ifDescr = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({
+		local result = ebm_session_read({
 			"CPE Vendor ID (and SpecInfo) [SI1,SI0,0]",
 			"CPE Vendor ID [1:3]",
 			"CPE Inventory Version [0:2]",
@@ -42,26 +42,26 @@ iftableMIB.ifDescr = function (request)
 end
 iftableMIB.ifSpeed = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "xdsl2LineStatusAttainableRateDs" })
+		local result = ebm_session_read({ "xdsl2LineStatusAttainableRateDs" })
 		return result[1].int * 1000
 	end)
 end
 iftableMIB.ifOperStatus = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "PhyStatus(?)" })
+		local result = ebm_session_read({ "PhyStatus(?)" })
 		return ((bit32.band(result[1].int, 0x00ff00) / 256) == 3) and 1 or 2	-- SHOWTIME?
 	end)
 end
-local function ifLastChange_wheel ()
-	ebm:read({ "Link Time" }, coroutine.create(function(result)
-		iftableMIB._ifLastChange = result.data[1].int
-		wheel[1000] = ifLastChange_wheel
+local function linktime_wheel ()
+	ebm_session:read({ "Link Time" }, coroutine.create(function(result)
+		iftableMIB._linktime = result.data[1].int
+		wheel[1000] = linktime_wheel
 	end))
 end
-ifLastChange_wheel()
-wheel[1000] = ifLastChange_wheel
+linktime_wheel()
+wheel[1000] = linktime_wheel
 iftableMIB.ifLastChange = function (request)
-	return iftableMIB._ifLastChange * 100
+	return ax_session:sysUpTime() - (iftableMIB._linktime * 100)
 end
 
 -- RFC 5650, section 2.1.1
@@ -104,7 +104,7 @@ ifXtableMIB.ifName = function (request)
 end
 ifXtableMIB.ifHighSpeed = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "xdsl2LineStatusAttainableRateDs" })
+		local result = ebm_session_read({ "xdsl2LineStatusAttainableRateDs" })
 		return math.floor(result[1].int / 1000)
 	end)
 end
@@ -142,31 +142,31 @@ end
 local xdsl2LineTableMIB = {}
 xdsl2LineTableMIB.xdsl2LineStatusXtuTransSys = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "xdsl2LineStatusXtuTransSys" })
+		local result = ebm_session_read({ "xdsl2LineStatusXtuTransSys" })
 		return result[1].raw:sub(3, 3)
 	end)
 end
 xdsl2LineTableMIB.xdsl2LineStatusAttainableRateDs = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "xdsl2LineStatusAttainableRateDs" })
+		local result = ebm_session_read({ "xdsl2LineStatusAttainableRateDs" })
 		return result[1].int * 1000
 	end)
 end
 xdsl2LineTableMIB.xdsl2LineStatusAttainableRateUs = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "xdsl2LineStatusAttainableRateUs" })
+		local result = ebm_session_read({ "xdsl2LineStatusAttainableRateUs" })
 		return result[1].int * 1000
 	end)
 end
 xdsl2LineTableMIB.xdsl2LineStatusActProfile = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "xdsl2LineStatusActProfile" })
+		local result = ebm_session_read({ "xdsl2LineStatusActProfile" })
 		return result[1].raw:sub(3, 3)
 	end)
 end
 xdsl2LineTableMIB.xdsl2LineStatusActLimitMask = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({
+		local result = ebm_session_read({
 			"xdslVdsl2ProfilesLimit8a",
 			-- "xdslVdsl2ProfilesLimit8b",
 			-- "xdslVdsl2ProfilesLimit8c",
@@ -185,19 +185,19 @@ xdsl2LineTableMIB.xdsl2LineStatusActLimitMask = function (request)
 end
 xdsl2LineTableMIB.xdsl2LineStatusElectricalLength = function (request)	-- FIXME convert m to 0.1db
 	return coroutine.create(function ()
-		local result = ebm_read({ "xdsl2LineStatusElectricalLength" })
+		local result = ebm_session_read({ "xdsl2LineStatusElectricalLength" })
 		return result[1].int
 	end)
 end
 xdsl2LineTableMIB.xdsl2LineStatusTrellisDs = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "Trellis (DS)" })
+		local result = ebm_session_read({ "Trellis (DS)" })
 		return result[1].int
 	end)
 end
 xdsl2LineTableMIB.xdsl2LineStatusTrellisUs = function (request)
 	return coroutine.create(function ()
-		local result = ebm_read({ "Trellis (US)" })
+		local result = ebm_session_read({ "Trellis (US)" })
 		return result[1].int
 	end)
 end
