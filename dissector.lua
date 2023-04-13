@@ -306,8 +306,8 @@ function proto.dissector (tvb, pinfo, tree)
 		--
 		-- Value
 		--
-		--    The Value field is three octets, and is present only when M is
-		--    set to two (2) indicating write.
+		--    The Value field is three octets, and is present only when M in
+		--    in the main header is set to two (2) indicating write.
 
 		if not pinfo.visited then
 			convlist[pinfo.number].cmds = {}
