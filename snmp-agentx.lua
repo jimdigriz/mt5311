@@ -1,5 +1,3 @@
-#!/usr/bin/env lua
-
 -- EBM SNMP Subagent - AgentX implementation
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
