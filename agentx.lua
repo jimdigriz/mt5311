@@ -636,7 +636,7 @@ function M:_consumer_mibview (request)
 			if kk and v.include == 0 and kk == v.start then
 				kk, vv = iter()
 			end
-			if kk and (not v["end"] or kk < v["end"]) then
+			if kk then
 				vb.name = kk
 				vb.type = vv.type
 				vb.data = vv.data
@@ -690,7 +690,6 @@ function M:_consumer_mibview (request)
 
 	local status = false
 	local response
-
 	if request._hdr.type == PTYPE.Get then
 		status = true
 		varbind = mibview_get(request)
