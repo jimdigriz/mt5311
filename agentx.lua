@@ -788,12 +788,15 @@ function M:index_allocate (t)
 			error(result)
 		end
 		if result.error == ERROR.duplicateRegistration then
-			status, result = self:index_deallocate(session, { ["type"] = ifindex.type, name = subtree, data = ifindex.data, context = t.context })
-			if not status then
-				error(result)
+			local cleanup_status, cleanup_result = self:index_deallocate(session, { ["type"] = ifindex.type, name = subtree, data = ifindex.data, context = t.context })
+			if not cleanup_status then
+				error(cleanup_result)
 			end
-			if result.error ~= ERROR.noAgentXError then
-				error(result.error)
+			if cleanup_result.error ~= ERROR.noAgentXError then
+				error(cleanup_result.error)
+			end
+			if bit32.band(t.flags, agentx.FLAGS.NEW_INDEX + agentx.FLAGS.ANY_INDEX) == 0 then
+				error(cleanup_result.error)
 			end
 			ifindex = nil
 		elseif result.error ~= ERROR.noAgentXError then
