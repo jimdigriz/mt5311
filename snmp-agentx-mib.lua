@@ -16,7 +16,7 @@ local function ebm_session_read (regs)
 	return result.data
 end
 
----- ifTable ----
+---- IF-MIB::ifTable ----
 
 local ifTableMIB = {}
 ifTableMIB.ifDescr = function (request)
@@ -106,7 +106,7 @@ if not status then
 	return false, result.error
 end
 
----- ifXTable ----
+---- IF-MIB::ifXTable ----
 
 local ifXTableMIB = {}
 ifXTableMIB.ifName = function (request)
@@ -143,11 +143,11 @@ if not status then
 	return false, result.error
 end
 
----- ifStackTable ----
+---- IF-MIB::ifStackTable ----
 
----- ENTITY-MIB ----
+---- ENTITY-MIB::... ----
 
----- xdsl2LineTable ----
+---- VDSL2-LINE-MIB::xdsl2LineTable ----
 
 local xdsl2LineTableMIB = {}
 xdsl2LineTableMIB.xdsl2LineStatusXtuTransSys = function (request)
@@ -245,7 +245,7 @@ if not status then
 	return false, result.error
 end
 
----- xdsl2LineBandTable ----
+---- VDSL2-LINE-MIB::xdsl2LineBandTable ----
 
 local xdsl2LineBandTableMIB = {}
 xdsl2LineBandTableMIB.xdsl2LineBand = function (request)
