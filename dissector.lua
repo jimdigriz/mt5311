@@ -5,7 +5,10 @@
 -- The Ethernet Boot & Management (EBM) protocol smells like an
 -- RPC for I2C. You ask for a register and it returns its value.
 --
--- Everything is guess work, so errors are guarenteed!
+-- Interestingly that the registers present and their encodings
+-- mostly implement VDSL2-LINE-MIB (RFC 5650).
+--
+-- Everything though is guess work, so errors are guarenteed!
 --
 -- Assumptions are codified with expert.group.ASSUMPTION
 

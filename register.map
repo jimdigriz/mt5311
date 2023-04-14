@@ -1258,7 +1258,7 @@
 0x007028	Interleaving Depth (DS)						# "\x00\x00\x01" = 1
 0x00700d	Interleaving Block (US)						# "\x00\x00\x5c" = 92
 0x007029	Interleaving Block (DS)						# "\x00\x00\xff" = 255
-0x006fda	SNR Margin US0							# "\x00\x00\x3b" = 59 (0.1 dB) => 5.9 dB
+0x006fda	SNR Margin US0							# "\x00\x00\x3b" = 59 (0.1 dB) => 5.9 dB (limit 0x7ffffe not 0x7ffffffe)
 0x006fde	SNR Margin US1							# "\x00\x00\x3b" = 59 (0.1 dB) => 5.9 dB
 0x006fee	SNR Margin DS1							# "\x00\x00\x21" = 33 (0.1 dB) => 3.3 dB
 0x006fe2	SNR Margin US2							# "\x7f\xff\xfe" = NA (0.1 dB)
@@ -1267,7 +1267,7 @@
 0x006ff6	SNR Margin DS3							# "\x7f\xff\xfe" = NA (0.1 dB)
 0x006fea	SNR Margin US4							# "\x7f\xff\xfe" = NA (0.1 dB)
 0x006ffa	SNR Margin DS4							# "\x7f\xff\xfe" = NA (0.1 dB)
-0x006fd0	Signal Attenuation US0						# "\x00\x00\x39" = 57 (0.1 dB) => 5.7 dB
+0x006fd0	Signal Attenuation US0						# "\x00\x00\x39" = 57 (0.1 dB) => 5.7 dB (limit 0x7ffffe not 0x7ffffffe)
 0x006fdd	Signal Attenuation US1						# "\x00\x01\x77" = 375 (0.1 dB) => 37.5 dB
 0x006fed	Signal Attenuation DS1						# "\x00\x00\xeb" = 235 (0.1 dB) => 23.5 dB
 0x006fe1	Signal Attenuation US2						# "\x7f\xff\xfe" = NA (0.1 dB)
@@ -1276,7 +1276,7 @@
 0x006ff5	Signal Attenuation DS3						# "\x00\x00\x00" = 0 (0.1 dB) => 0 dB
 0x006fe9	Signal Attenuation US4						# "\x7f\xff\xfe" = NA (0.1 dB)
 0x006ff9	Signal Attenuation DS4						# "\x7f\xff\xfe" = NA (0.1 dB)
-0x006fd8	Line Attenuation US0						# "\x00\x00\x39" = 57 (0.1 dB) => 5.7 dB
+0x006fd8	Line Attenuation US0						# "\x00\x00\x39" = 57 (0.1 dB) => 5.7 dB (limit 0x7ffffe not 0x7ffffffe)
 0x006fdc	Line Attenuation US1						# "\x00\x01\x73" = 371 (0.1 dB) => 37.1 dB
 0x006fec	Line Attenuation DS1						# "\x00\x00\xcf" = 207 (0.1 dB) => 20.7 dB
 0x006fe0	Line Attenuation US2						# "\x7f\xff\xfe" = NA (0.1 dB)

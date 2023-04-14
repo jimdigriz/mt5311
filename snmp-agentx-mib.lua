@@ -6,8 +6,6 @@ local agentx, ax_session, ifindex, ebm, ebm_session, wheel = ...
 
 local bit32 = require "bit32"
 
-local iftable = {1,3,6,1,2,1,2,2}
-local ifxtable = {1,3,6,1,2,1,31,1,1}
 local vdsl2MIB = {1,3,6,1,2,1,10,251}
 
 local function ebm_session_read (regs)
@@ -80,6 +78,7 @@ local mibview_iftable_load = {
 	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }			-- ifSpecific (deprecated)
 }
 
+local iftable = {1,3,6,1,2,1,2,2}
 local iftable_entry = {unpack(iftable)}
 table.insert(iftable_entry, 1)		-- ifEntry
 table.insert(iftable_entry, 0)
@@ -98,44 +97,44 @@ end
 
 ---- ifXTable ----
 
-local ifXtableMIB = {}
-ifXtableMIB.ifName = function (request)
+local ifXTableMIB = {}
+ifXTableMIB.ifName = function (request)
 	return "ebm" .. ebm_session.addr_print .. "@" .. ebm_session.iface
 end
-ifXtableMIB.ifHighSpeed = function (request)
+ifXTableMIB.ifHighSpeed = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({ "xdsl2LineStatusAttainableRateDs" })
 		return math.floor(result[1].int / 1000)
 	end)
 end
 
--- RFC 5650, section 2.1.1
-local mibview_ifxtable_load = {
-	[1]	= { ["type"] = agentx.VTYPE.OctetString, data = ifXtableMIB.ifName },		-- ifName
-	[15]	= { ["type"] = agentx.VTYPE.Gauge32, data = ifXtableMIB.ifHighSpeed },		-- ifHighSpeed
+local mibview_ifXTable_load = {
+	[1]	= { ["type"] = agentx.VTYPE.OctetString, data = ifXTableMIB.ifName },		-- ifName
+	[15]	= { ["type"] = agentx.VTYPE.Gauge32, data = ifXTableMIB.ifHighSpeed },		-- ifHighSpeed
 	[14]	= { ["type"] = agentx.VTYPE.Integer, data = 2 },				-- ifLinkUpDownTrapEnable (FIXME: should be enabled)
 	[17]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifConnectorPresent (FIXME: poll SFP)
 }
 
-local ifxtable_entry = {unpack(ifxtable)}
-table.insert(ifxtable_entry, 1)		-- ifXEntry
-table.insert(ifxtable_entry, 0)
-table.insert(ifxtable_entry, ifindex.data)
+local ifXTable = {1,3,6,1,2,1,31,1,1}
+local ifXTable_entry = {unpack(ifXTable)}
+table.insert(ifXTable_entry, 1)			-- ifXEntry
+table.insert(ifXTable_entry, 0)
+table.insert(ifXTable_entry, ifindex.data)	-- ifIndex
 
-for k, v in pairs(mibview_ifxtable_load) do
-	ifxtable_entry[#ifxtable_entry - 1] = k
-	ax_session.mibview[ifxtable_entry] = v
+for k, v in pairs(mibview_ifXTable_load) do
+	ifXTable_entry[#ifXTable_entry - 1] = k
+	ax_session.mibview[ifXTable_entry] = v
 end
 
-ifxtable_entry[#ifxtable_entry - 1] = 1
-local status, result = ax_session:register({subtree=ifxtable_entry, range_subid=#ifxtable_entry - 1, upper_bound=19})
+ifXTable_entry[#ifXTable_entry - 1] = 1
+local status, result = ax_session:register({subtree=ifXTable_entry, range_subid=#ifXTable_entry - 1, upper_bound=19})
 if not status then
 	return false, result.error
 end
 
----- ifStackTable - NYI ----
+---- ifStackTable ----
 
----- ENTITY-MIB - NYI ----
+---- ENTITY-MIB ----
 
 ---- xdsl2LineTable ----
 
@@ -205,7 +204,6 @@ xdsl2LineTableMIB.xdsl2LineStatusTrellisUs = function (request)
 	end)
 end
 
--- RFC 5650, section 3
 local mibview_xdsl2LineTable_load = {
 	[13]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusXtuTransSys },		-- xdsl2LineStatusXtuTransSys (Issue #1)
 	[20]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusAttainableRateDs },	-- xdsl2LineStatusAttainableRateDs
@@ -218,12 +216,12 @@ local mibview_xdsl2LineTable_load = {
 }
 
 local xdsl2LineTable_entry = {unpack(vdsl2MIB)}
-table.insert(xdsl2LineTable_entry, 1)		-- xdsl2Objects
-table.insert(xdsl2LineTable_entry, 1)		-- xdsl2Line
-table.insert(xdsl2LineTable_entry, 1)		-- xdsl2LineTable
-table.insert(xdsl2LineTable_entry, 1)		-- xdsl2LineEntry
+table.insert(xdsl2LineTable_entry, 1)			-- xdsl2Objects
+table.insert(xdsl2LineTable_entry, 1)			-- xdsl2Line
+table.insert(xdsl2LineTable_entry, 1)			-- xdsl2LineTable
+table.insert(xdsl2LineTable_entry, 1)			-- xdsl2LineEntry
 table.insert(xdsl2LineTable_entry, 0)
-table.insert(xdsl2LineTable_entry, ifindex.data)
+table.insert(xdsl2LineTable_entry, ifindex.data)	-- ifIndex
 
 for k, v in pairs(mibview_xdsl2LineTable_load) do
 	xdsl2LineTable_entry[#xdsl2LineTable_entry - 1] = k
@@ -234,6 +232,187 @@ xdsl2LineTable_entry[#xdsl2LineTable_entry - 1] = 1
 local status, result = ax_session:register({subtree=xdsl2LineTable_entry, range_subid=#xdsl2LineTable_entry - 1, upper_bound=38})
 if not status then
 	return false, result.error
+end
+
+---- xdsl2LineBandTable ----
+
+local xdsl2LineBandTableMIB = {}
+xdsl2LineBandTableMIB.xdsl2LineBand = function (request)
+	return request.name[#request.name]
+end
+xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten = function (request)
+	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
+	local bands = {}
+	if xdsl2LineBand == 1 or xdsl2LineBand == 3 then
+		table.insert(bands, "Line Attenuation US0")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 5 then
+		table.insert(bands, "Line Attenuation US1")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 7 then
+		table.insert(bands, "Line Attenuation US2")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 9 then
+		table.insert(bands, "Line Attenuation US3")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 11 then
+		table.insert(bands, "Line Attenuation US4")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 4 then
+		table.insert(bands, "Line Attenuation DS1")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 6 then
+		table.insert(bands, "Line Attenuation DS2")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 8 then
+		table.insert(bands, "Line Attenuation DS3")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 10 then
+		table.insert(bands, "Line Attenuation DS4")
+	end
+	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
+	return coroutine.create(function ()
+		local result = ebm_session_read(bands)
+
+		if #bands == 1 then
+			return result[1].int + ((result[1].int < 8388606) and 0 or 2139095040)
+		end
+
+		local value = 0
+		for i, v in ipairs(result) do
+			if v.int < 8388606 then
+				value = value + v.int
+			end
+		end
+		return math.floor(value / #result)
+	end)
+end
+xdsl2LineBandTableMIB.xdsl2LineBandStatusSigAtten = function (request)
+	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
+	local bands = {}
+	if xdsl2LineBand == 1 or xdsl2LineBand == 3 then
+		table.insert(bands, "Signal Attenuation US0")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 5 then
+		table.insert(bands, "Signal Attenuation US1")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 7 then
+		table.insert(bands, "Signal Attenuation US2")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 9 then
+		table.insert(bands, "Signal Attenuation US3")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 11 then
+		table.insert(bands, "Signal Attenuation US4")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 4 then
+		table.insert(bands, "Signal Attenuation DS1")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 6 then
+		table.insert(bands, "Signal Attenuation DS2")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 8 then
+		table.insert(bands, "Signal Attenuation DS3")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 10 then
+		table.insert(bands, "Signal Attenuation DS4")
+	end
+	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
+	return coroutine.create(function ()
+		local result = ebm_session_read(bands)
+
+		if #bands == 1 then
+			return result[1].int + ((result[1].int < 8388606) and 0 or 2139095040)
+		end
+
+		local value = 0
+		for i, v in ipairs(result) do
+			if v.int < 8388606 then
+				value = value + v.int
+			end
+		end
+		return math.floor(value / #result)
+	end)
+end
+xdsl2LineBandTableMIB.xdsl2LineBandStatusSnrMargin = function (request)
+	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
+	local bands = {}
+	if xdsl2LineBand == 1 or xdsl2LineBand == 3 then
+		table.insert(bands, "SNR Margin US0")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 5 then
+		table.insert(bands, "SNR Margin US1")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 7 then
+		table.insert(bands, "SNR Margin US2")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 9 then
+		table.insert(bands, "SNR Margin US3")
+	end
+	if xdsl2LineBand == 1 or xdsl2LineBand == 11 then
+		table.insert(bands, "SNR Margin US4")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 4 then
+		table.insert(bands, "SNR Margin DS1")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 6 then
+		table.insert(bands, "SNR Margin DS2")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 8 then
+		table.insert(bands, "SNR Margin DS3")
+	end
+	if xdsl2LineBand == 2 or xdsl2LineBand == 10 then
+		table.insert(bands, "SNR Margin DS4")
+	end
+	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
+	return coroutine.create(function ()
+		local result = ebm_session_read(bands)
+
+		if #bands == 1 then
+			return result[1].int + ((result[1].int < 8388606) and 0 or 2139095040)
+		end
+
+		local value = 0
+		for i, v in ipairs(result) do
+			if v.int < 8388606 then
+				value = value + v.int
+			end
+		end
+		return math.floor(value / #result)
+	end)
+end
+
+local mibview_xdsl2LineBandTable_load = {
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineBandTableMIB.xdsl2LineBand },			-- xdsl2LineBand (not-accessible)
+	[2]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten },		-- xdsl2LineBandStatusLnAtten
+	[3]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineBandTableMIB.xdsl2LineBandStatusSigAtten },	-- xdsl2LineBandStatusSigAtten
+	[4]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineBandTableMIB.xdsl2LineBandStatusSnrMargin },	-- xdsl2LineBandStatusSnrMargin
+}
+
+local xdsl2LineBandTable_entry = {unpack(vdsl2MIB)}
+table.insert(xdsl2LineBandTable_entry, 1)		-- xdsl2Objects
+table.insert(xdsl2LineBandTable_entry, 1)		-- xdsl2Line
+table.insert(xdsl2LineBandTable_entry, 2)		-- xdsl2LineBandTable
+table.insert(xdsl2LineBandTable_entry, 1)		-- xdsl2LineBandEntry
+table.insert(xdsl2LineBandTable_entry, 0)
+table.insert(xdsl2LineBandTable_entry, ifindex.data)	-- ifIndex
+table.insert(xdsl2LineBandTable_entry, 0)		-- xdsl2LineBand
+
+for k, v in pairs(mibview_xdsl2LineBandTable_load) do
+	xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry - 2] = k
+	for i=1,11 do
+		xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry] = i
+		ax_session.mibview[xdsl2LineBandTable_entry] = v
+	end
+end
+
+xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry - 2] = 1
+for i=1,11 do
+	xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry] = i
+	local status, result = ax_session:register({subtree=xdsl2LineBandTable_entry, range_subid=#xdsl2LineBandTable_entry - 2, upper_bound=4})
+	if not status then
+		return false, result.error
+	end
 end
 
 ----
