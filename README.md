@@ -115,7 +115,7 @@ Where:
 
 If there is no error it means everything is are working, otherwise recheck that you followed the installation instructions so far correctly.
 
-Assuming that you have your SNMP client (and MIBs) correctly set up on your workstation, you should be able to see the EBM 'interface' appear using something like the following commands (you may need to adjust your authentication settings):
+Assuming that you have your SNMP client and MIBs correctly set up on your workstation (`apt get install --no-install-recommends snmp snmp-mibs-downloader`), you should be able to see the EBM 'interface' appear using something like the following commands (you may need to adjust your authentication settings):
 
     snmptable -m ALL -v 2c -c public 192.0.2.1 IF-MIB::ifTable
     snmptable -m ALL -v 2c -c public 192.0.2.1 IF-MIB::ifXTable
