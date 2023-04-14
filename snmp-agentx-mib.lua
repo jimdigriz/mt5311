@@ -275,12 +275,12 @@ xdsl2LineBandTableMIB._xdsl2LineBandStatus = function (request, name)
 		local result = ebm_session_read(bands)
 
 		if #bands == 1 then
-			return result[1].int + ((result[1].int < 8388606) and 0 or 2139095040)
+			return result[1].int + ((result[1].int < 0x7ffffe) and 0 or (0x7ffffffe - 0x7ffffe))
 		end
 
 		local value = 0
 		for i, v in ipairs(result) do
-			if v.int < 8388606 then
+			if v.int < 0x7ffffe then
 				value = value + v.int
 			end
 		end
