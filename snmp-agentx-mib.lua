@@ -240,35 +240,35 @@ local xdsl2LineBandTableMIB = {}
 xdsl2LineBandTableMIB.xdsl2LineBand = function (request)
 	return request.name[#request.name]
 end
-xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten = function (request)
+xdsl2LineBandTableMIB._xdsl2LineBandStatus = function (request, name)
 	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
 	local bands = {}
 	if xdsl2LineBand == 1 or xdsl2LineBand == 3 then
-		table.insert(bands, "Line Attenuation US0")
+		table.insert(bands, name .. " US0")
 	end
 	if xdsl2LineBand == 1 or xdsl2LineBand == 5 then
-		table.insert(bands, "Line Attenuation US1")
+		table.insert(bands, name .. " US1")
 	end
 	if xdsl2LineBand == 1 or xdsl2LineBand == 7 then
-		table.insert(bands, "Line Attenuation US2")
+		table.insert(bands, name .. " US2")
 	end
 	if xdsl2LineBand == 1 or xdsl2LineBand == 9 then
-		table.insert(bands, "Line Attenuation US3")
+		table.insert(bands, name .. " US3")
 	end
 	if xdsl2LineBand == 1 or xdsl2LineBand == 11 then
-		table.insert(bands, "Line Attenuation US4")
+		table.insert(bands, name .. " US4")
 	end
 	if xdsl2LineBand == 2 or xdsl2LineBand == 4 then
-		table.insert(bands, "Line Attenuation DS1")
+		table.insert(bands, name .. " DS1")
 	end
 	if xdsl2LineBand == 2 or xdsl2LineBand == 6 then
-		table.insert(bands, "Line Attenuation DS2")
+		table.insert(bands, name .. " DS2")
 	end
 	if xdsl2LineBand == 2 or xdsl2LineBand == 8 then
-		table.insert(bands, "Line Attenuation DS3")
+		table.insert(bands, name .. " DS3")
 	end
 	if xdsl2LineBand == 2 or xdsl2LineBand == 10 then
-		table.insert(bands, "Line Attenuation DS4")
+		table.insert(bands, name .. " DS4")
 	end
 	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
 	return coroutine.create(function ()
@@ -286,100 +286,15 @@ xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten = function (request)
 		end
 		return math.floor(value / #result)
 	end)
+end
+xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten = function (request)
+	return xdsl2LineBandTableMIB._xdsl2LineBandStatus(request, "Line Attenuation")
 end
 xdsl2LineBandTableMIB.xdsl2LineBandStatusSigAtten = function (request)
-	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
-	local bands = {}
-	if xdsl2LineBand == 1 or xdsl2LineBand == 3 then
-		table.insert(bands, "Signal Attenuation US0")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 5 then
-		table.insert(bands, "Signal Attenuation US1")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 7 then
-		table.insert(bands, "Signal Attenuation US2")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 9 then
-		table.insert(bands, "Signal Attenuation US3")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 11 then
-		table.insert(bands, "Signal Attenuation US4")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 4 then
-		table.insert(bands, "Signal Attenuation DS1")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 6 then
-		table.insert(bands, "Signal Attenuation DS2")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 8 then
-		table.insert(bands, "Signal Attenuation DS3")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 10 then
-		table.insert(bands, "Signal Attenuation DS4")
-	end
-	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
-	return coroutine.create(function ()
-		local result = ebm_session_read(bands)
-
-		if #bands == 1 then
-			return result[1].int + ((result[1].int < 8388606) and 0 or 2139095040)
-		end
-
-		local value = 0
-		for i, v in ipairs(result) do
-			if v.int < 8388606 then
-				value = value + v.int
-			end
-		end
-		return math.floor(value / #result)
-	end)
+	return xdsl2LineBandTableMIB._xdsl2LineBandStatus(request, "Signal Attenuation")
 end
 xdsl2LineBandTableMIB.xdsl2LineBandStatusSnrMargin = function (request)
-	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
-	local bands = {}
-	if xdsl2LineBand == 1 or xdsl2LineBand == 3 then
-		table.insert(bands, "SNR Margin US0")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 5 then
-		table.insert(bands, "SNR Margin US1")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 7 then
-		table.insert(bands, "SNR Margin US2")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 9 then
-		table.insert(bands, "SNR Margin US3")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 11 then
-		table.insert(bands, "SNR Margin US4")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 4 then
-		table.insert(bands, "SNR Margin DS1")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 6 then
-		table.insert(bands, "SNR Margin DS2")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 8 then
-		table.insert(bands, "SNR Margin DS3")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 10 then
-		table.insert(bands, "SNR Margin DS4")
-	end
-	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
-	return coroutine.create(function ()
-		local result = ebm_session_read(bands)
-
-		if #bands == 1 then
-			return result[1].int + ((result[1].int < 8388606) and 0 or 2139095040)
-		end
-
-		local value = 0
-		for i, v in ipairs(result) do
-			if v.int < 8388606 then
-				value = value + v.int
-			end
-		end
-		return math.floor(value / #result)
-	end)
+	return xdsl2LineBandTableMIB._xdsl2LineBandStatus(request, "SNR Margin")
 end
 
 local mibview_xdsl2LineBandTable_load = {
