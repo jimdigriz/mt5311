@@ -18,9 +18,56 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
 
 # Utilities
 
+I have used Lua (compatible with version 5.1) in the hope this work may be found to be useful to the OpenWRT community, a group that benefits from software with low disk space usage dependencies.
+
+To set up your OS to run any of the utilities below, run:
+
+ * **Debian (and probably Ubuntu):**
+
+       sudo apt install --no-install-recommends lua5.1 luarocks
+
+   Now depending on:
+
+    * If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET` support)](https://github.com/luaposix/luaposix/releases/tag/v35.1), then run:
+
+          sudo apt install --no-install-recommends lua-posix
+
+    * Otherwise, run:
+
+          sudo apt install --no-install-recommends build-essential liblua5.1-dev
+          sudo luarocks install luaposix
+
+ * **OpenWRT:**
+
+       opkg install lua lua-posix luarocks
+
+Now run:
+
+    luarocks install lua-struct		# (*with* hyphen)
+
+Now fetch the project using:
+
+    git clone https://github.com/jimdigriz/mt5311.git /opt/mt5311
+
+## EBM Read
+
+A one shot utility to query the SFP for information.
+
+To use it, run as `root`:
+
+    # lua /opt/mt5311/ebm-read.lua eth1 00:03:79:06:89:d7 xdsl2LineStatusAttainableRateUs xdsl2LineStatusAttainableRateDs xdsl2LineStatusElectricalLength
+    reg	hex	int
+    xdsl2LineStatusAttainableRateUs	001a25	6693
+    xdsl2LineStatusAttainableRateDs	00af60	44896
+    xdsl2LineStatusElectricalLength	0000b8	184
+
+The output is in TSV (tab separated variable) format.
+
+You should look at the [`register.map`](./register.map) file for other registers that you can read.
+
 ## SNMP
 
-**N.B.** WORK IN PROGRESS, NOT COMPLETE, NOT USABLE
+**N.B.** WORK IN PROGRESS AND NOT COMPLETE
 
 An [AgentX subagent](https://datatracker.ietf.org/doc/html/rfc2741) that where possible implements the following MIBs:
 
@@ -31,11 +78,11 @@ An [AgentX subagent](https://datatracker.ietf.org/doc/html/rfc2741) that where p
         * [RFC 2662](https://www.rfc-editor.org/rfc/rfc2662) - Definitions of Managed Objects for the ADSL Lines
  * [RFC 2863](https://datatracker.ietf.org/doc/html/rfc2863) - The Interfaces Group MIB
 
-To set up your OS, run:
+To set up your OS, in additional to the steps above, run:
 
  * **Debian (and probably Ubuntu):**
 
-       sudo apt install --no-install-recommends lua5.1 snmpd sudo
+       sudo apt install --no-install-recommends snmpd
 
    Now edit `/etc/snmp/snmpd.conf` and add the following line:
 
@@ -50,39 +97,9 @@ To set up your OS, run:
 
        sudo systemctl restart snmpd
 
-   Now depending on:
-
-    * If your distro provides [`lua-posix` 35.1 or later (for `AF_PACKET` support)](https://github.com/luaposix/luaposix/releases/tag/v35.1), then run:
-
-          sudo apt install --no-install-recommends lua-posix
-
-    * Otherwise, run:
-
-          sudo apt install --no-install-recommends build-essential liblua5.1-dev luarocks
-          sudo luarocks install luaposix
-
  * **OpenWRT:**
 
-       opkg install lua lua-posix snmpd
-
-   **N.B.** consider yourselves lucky, I normally would have written this all in Perl, but as this is likely to be useful to the OpenWRT community I have purposely targeted easy to meet and low disk space usage dependencies (including supporting Lua 5.1)
-
-Now run:
-
-    git clone https://github.com/jimdigriz/mt5311.git /opt/mt5311
-    luarocks install lua-struct		# (*with* hyphen)
-
-If you are constrained on disk space, you may prefer to use:
-
-    mkdir -p /opt/mt5311
-    cd /opt/mt5311
-    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp-agentx.lua
-    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/snmp-agentx-mib.lua
-    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/agentx.lua
-    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/ebm.lua
-    wget https://raw.githubusercontent.com/jimdigriz/mt5311/main/register.lua
-    # alternatively use 'luarocks install lua-struct' (*with* hyphen)
-    wget https://raw.githubusercontent.com/iryont/lua-struct/master/src/struct.lua
+       opkg install snmpd
 
 Check the install was correctly done by running the following as `root`:
 
@@ -96,7 +113,7 @@ Where:
     * this is the MAC address printed clearly on a label on the SFP
     * case insensitive and accepts the formats `001122334455`, `00:11:22:33:44:55` and `00-11-22-33-44-55`
 
-If there is no error, things are working fine, otherwise recheck that you followed the installation instructions so far correctly.
+If there is no error it means everything is are working, otherwise recheck that you followed the installation instructions so far correctly.
 
 Assuming that you have your SNMP client (and MIBs) correctly set up on your workstation, you should be able to see the EBM 'interface' appear using something like the following commands (you may need to adjust your authentication settings):
 
@@ -110,9 +127,11 @@ Assuming that you have your SNMP client (and MIBs) correctly set up on your work
 
 ...
 
+TODO include `systemd`/`service` integration
+
 ## Wireshark
 
-To use a basic Ethernet Boot & Management (EBM) protocol dissectoru:
+To use a basic Ethernet Boot & Management (EBM) protocol dissector:
 
     sudo tcpdump -n -i eth0 'ether proto 0x6120' -w - -U | tee dump.pcap | tcpdump -r - -n -v
     wireshark -X lua_script:dissector.lua dump.pcap
