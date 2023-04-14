@@ -183,10 +183,13 @@ xdsl2LineTableMIB.xdsl2LineStatusActLimitMask = function (request)
 		return bits
 	end)
 end
-xdsl2LineTableMIB.xdsl2LineStatusElectricalLength = function (request)	-- FIXME convert m to 0.1db
+xdsl2LineTableMIB.xdsl2LineStatusElectricalLength = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({ "xdsl2LineStatusElectricalLength" })
-		return result[1].int
+		-- https://forum.kitz.co.uk/index.php?topic=10566.0
+		-- kl0 is distance at 1Mhz so by using km (EBM returns metres)
+		-- it makes things easier to read (math.sqrt(1)=1 for completeness)
+		return (13.81 * (result[1].int / 1000) * math.sqrt(1)) * 10
 	end)
 end
 xdsl2LineTableMIB.xdsl2LineStatusTrellisDs = function (request)
