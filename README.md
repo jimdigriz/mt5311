@@ -138,6 +138,10 @@ To use a basic Ethernet Boot & Management (EBM) protocol dissector:
 
 **N.B.** [`dissector.lua`](./dissector.lua) contains my notes on the protocol
 
+If it works, it looks like:
+
+![Screenshot of Wireshark having opened dump-soc.pcap.gz using the EBM dissector](./wireshark.jpeg)
+
 ### Sample Data
 
 [`dump-soc.txt.gz`](./dump-soc.txt.gz) is the output of the "Dump SOC" button whilst [`dump-soc.pcap.gz`](./dump-soc.pcap.gz) is a packet capture during running it; [`register.map`](./register.map) is a listing of the register addresses and their purpose manually derived from these two files.
