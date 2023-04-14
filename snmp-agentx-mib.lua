@@ -404,12 +404,10 @@ for k, v in pairs(mibview_xdsl2LineBandTable_load) do
 		xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry] = i
 		ax_session.mibview[xdsl2LineBandTable_entry] = v
 	end
-end
 
-xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry - 2] = 1
-for i=1,11 do
-	xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry] = i
-	local status, result = ax_session:register({subtree=xdsl2LineBandTable_entry, range_subid=#xdsl2LineBandTable_entry - 2, upper_bound=4})
+	-- multi-index tables we need to register each entry as registering at the lowest subid does not work
+	xdsl2LineBandTable_entry[#xdsl2LineBandTable_entry] = 1
+	local status, result = ax_session:register({subtree=xdsl2LineBandTable_entry, range_subid=#xdsl2LineBandTable_entry, upper_bound=11})
 	if not status then
 		return false, result.error
 	end
