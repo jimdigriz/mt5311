@@ -110,7 +110,7 @@ Where:
  * **`IFACE`:** name of the host network interface (for example `eth1`) the VDSL2 SFP is connected to
     * this must be the untagged (native/non-VLANed) interface to the SFP
  * **`MACADDR`:** MAC address of the VDSL2 SFP
-    * this is the MAC address printed clearly on a label on the SFP
+    * set to the MAC address printed on your SFP
     * case insensitive and accepts the formats `001122334455`, `00:11:22:33:44:55` and `00-11-22-33-44-55`
 
 If there is no error it means everything is are working, otherwise recheck that you followed the installation instructions so far correctly.
