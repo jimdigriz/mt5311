@@ -62,10 +62,10 @@ local function ifTable_wheel ()
 			ifTableMIB._ifLastChange = sysUpTime
 		end
 
-		-- use Link Time to check we have not missed anything
+		-- use Link Time (has last value when down) to check we have not missed anything
 		-- the slip time is because we are polling a second resolution timer
 		local LinkUpTime = math.max(0, sysUpTime - (result.data[2].int * 100))
-		if (LinkUpTime + 100) < ifTableMIB._ifLastChange then
+		if ifOperStatus == 1 and (LinkUpTime + 100) < ifTableMIB._ifLastChange then
 			ifTableMIB._ifLastChange = LinkUpTime
 		end
 
