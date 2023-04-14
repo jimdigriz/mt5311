@@ -2,7 +2,7 @@
 -- Copyright (C) 2023, coreMem Limited <info@coremem.com>
 -- SPDX-License-Identifier: AGPL-3.0-only
 
-local agentx, ax_session, ifindex, ebm, ebm_session, wheel = ...
+local agentx, ax_session, ifIndex, ebm, ebm_session, wheel = ...
 
 local bit32 = require "bit32"
 
@@ -75,7 +75,7 @@ end
 ifTable_wheel()
 
 local mibview_ifTable_load = {
---	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex.data },			-- ifIndex: auto-registered by index_allocate
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifIndex.data },			-- ifIndex: auto-registered by index_allocate
 	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = ifTableMIB.ifDescr },		-- ifDescr
 	[3]	= { ["type"] = agentx.VTYPE.Integer, data = vdsl2MIB[#vdsl2MIB] },		-- ifType
 	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },				-- ifMtu
@@ -93,7 +93,7 @@ local ifTable = {1,3,6,1,2,1,2,2}
 local ifTable_entry = {unpack(ifTable)}
 table.insert(ifTable_entry, 1)		-- ifEntry
 table.insert(ifTable_entry, 0)
-table.insert(ifTable_entry, ifindex.data)
+table.insert(ifTable_entry, ifIndex.data)
 
 for k, v in pairs(mibview_ifTable_load) do
 	ifTable_entry[#ifTable_entry - 1] = k
@@ -130,7 +130,7 @@ local ifXTable = {1,3,6,1,2,1,31,1,1}
 local ifXTable_entry = {unpack(ifXTable)}
 table.insert(ifXTable_entry, 1)			-- ifXEntry
 table.insert(ifXTable_entry, 0)
-table.insert(ifXTable_entry, ifindex.data)	-- ifIndex
+table.insert(ifXTable_entry, ifIndex.data)	-- ifIndex
 
 for k, v in pairs(mibview_ifXTable_load) do
 	ifXTable_entry[#ifXTable_entry - 1] = k
@@ -232,7 +232,7 @@ table.insert(xdsl2LineTable_entry, 1)			-- xdsl2Line
 table.insert(xdsl2LineTable_entry, 1)			-- xdsl2LineTable
 table.insert(xdsl2LineTable_entry, 1)			-- xdsl2LineEntry
 table.insert(xdsl2LineTable_entry, 0)
-table.insert(xdsl2LineTable_entry, ifindex.data)	-- ifIndex
+table.insert(xdsl2LineTable_entry, ifIndex.data)	-- ifIndex
 
 for k, v in pairs(mibview_xdsl2LineTable_load) do
 	xdsl2LineTable_entry[#xdsl2LineTable_entry - 1] = k
@@ -321,7 +321,7 @@ table.insert(xdsl2LineBandTable_entry, 1)		-- xdsl2Line
 table.insert(xdsl2LineBandTable_entry, 2)		-- xdsl2LineBandTable
 table.insert(xdsl2LineBandTable_entry, 1)		-- xdsl2LineBandEntry
 table.insert(xdsl2LineBandTable_entry, 0)
-table.insert(xdsl2LineBandTable_entry, ifindex.data)	-- ifIndex
+table.insert(xdsl2LineBandTable_entry, ifIndex.data)	-- ifIndex
 table.insert(xdsl2LineBandTable_entry, 0)		-- xdsl2LineBand
 
 for k, v in pairs(mibview_xdsl2LineBandTable_load) do
