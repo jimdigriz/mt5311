@@ -766,8 +766,8 @@ function M:index_allocate (t)
 	assert(#t.varbind == 1)	-- FIXME support more than one with the auto-registration support
 
 	local session
-	local ifindex
-	while not ifindex do
+	local index
+	while not index do
 		session = { sessionID = self._sessionID, packetID = self._packetID, context = t.context }
 		local status, result = self:_request(pdu.enc[PTYPE.IndexAllocate](session, t))
 		if not status then
@@ -777,17 +777,17 @@ function M:index_allocate (t)
 			error(result.error)
 		end
 
-		ifindex = result.varbind[1]
+		index = result.varbind[1]
 
-		local subtree = {unpack(ifindex.name)}
-		table.insert(subtree, ifindex.data)
+		local subtree = {unpack(index.name)}
+		table.insert(subtree, index.data)
 
 		status, result = self:register({ subtree = subtree, context = t.context })
 		if not status then
 			error(result)
 		end
 		if result.error == ERROR.duplicateRegistration then
-			local cleanup_status, cleanup_result = self:index_deallocate(session, { ["type"] = ifindex.type, name = subtree, data = ifindex.data, context = t.context })
+			local cleanup_status, cleanup_result = self:index_deallocate(session, { ["type"] = index.type, name = subtree, data = index.data, context = t.context })
 			if not cleanup_status then
 				error(cleanup_result)
 			end
@@ -797,17 +797,17 @@ function M:index_allocate (t)
 			if bit32.band(t.flags, agentx.FLAGS.NEW_INDEX + agentx.FLAGS.ANY_INDEX) == 0 then
 				error(cleanup_result.error)
 			end
-			ifindex = nil
+			index = nil
 		elseif result.error ~= ERROR.noAgentXError then
 			error(result.error)
 		end
 	end
 
-	local subtree = {unpack(ifindex.name)}
-	table.insert(subtree, ifindex.data)
-	self.mibview[subtree] = { ["type"] = ifindex.type, data = ifindex.data }
+	local subtree = {unpack(index.name)}
+	table.insert(subtree, index.data)
+	self.mibview[subtree] = { ["type"] = index.type, data = index.data }
 
-	return ifindex
+	return index
 end
 
 function M:index_deallocate (t)

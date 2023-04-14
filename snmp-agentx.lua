@@ -100,19 +100,19 @@ if not ax_session then
 	error(err)
 end
 
-local iftable = {1,3,6,1,2,1,2,2}
-local iftable_ifindex = {unpack(iftable)}
-table.insert(iftable_ifindex, 1)	-- ifEntry
-table.insert(iftable_ifindex, 1)	-- ifIndex
+local ifTable = {1,3,6,1,2,1,2,2}
+local ifTable_ifIndex = {unpack(ifTable)}
+table.insert(ifTable_ifIndex, 1)	-- ifEntry
+table.insert(ifTable_ifIndex, 1)	-- ifIndex
 
-local ifindex
--- local ifindex, err = ax_session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, flags=agentx.FLAGS.NEW_INDEX })
-local ifindex, err = ax_session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=iftable_ifindex, data = IFINDEX })
-if not ifindex then
+local ifIndex
+-- local ifIndex, err = ax_session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=ifTable_ifIndex, flags=agentx.FLAGS.NEW_INDEX })
+local ifIndex, err = ax_session:index_allocate({ ["type"]=agentx.VTYPE.Integer, name=ifTable_ifIndex, data = IFINDEX })
+if not ifIndex then
 	error(err)
 end
 
-local status, err = assert(loadfile(dir .. "snmp-agentx-mib.lua"))(agentx, ax_session, ifindex, ebm, ebm_session, wheel)
+local status, err = assert(loadfile(dir .. "snmp-agentx-mib.lua"))(agentx, ax_session, ifIndex, ebm, ebm_session, wheel)
 if not status then
 	error(err)
 end
