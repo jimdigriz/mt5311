@@ -18,8 +18,8 @@ end
 
 ---- ifTable ----
 
-local iftableMIB = {}
-iftableMIB.ifDescr = function (request)
+local ifTableMIB = {}
+ifTableMIB.ifDescr = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({
 			"CPE Vendor ID (and SpecInfo) [SI1,SI0,0]",
@@ -38,59 +38,70 @@ iftableMIB.ifDescr = function (request)
 		return ifdescr:sub(3, 3 + 3) .. " " .. ifdescr:sub(3 + 3 + 1, -3)
 	end)
 end
-iftableMIB.ifSpeed = function (request)
+ifTableMIB.ifSpeed = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({ "xdsl2LineStatusAttainableRateDs" })
 		return result[1].int * 1000
 	end)
 end
-iftableMIB.ifOperStatus = function (request)
-	return coroutine.create(function ()
-		local result = ebm_session_read({ "PhyStatus(?)" })
-		return ((bit32.band(result[1].int, 0x00ff00) / 256) == 3) and 1 or 2	-- SHOWTIME?
-	end)
+ifTableMIB._ifOperStatus = 4
+ifTableMIB.ifOperStatus = function (request)
+	return ifTableMIB._ifOperStatus
 end
-local function linktime_wheel ()
-	ebm_session:read({ "Link Time" }, coroutine.create(function(result)
-		iftableMIB._linktime = result.data[1].int
-		wheel[1000] = linktime_wheel
+ifTableMIB._ifLastChange = 0
+ifTableMIB.ifLastChange = function (request)
+	return ifTableMIB._ifLastChange
+end
+local function ifTable_wheel ()
+	ebm_session:read({ "PhyStatus(?)", "Link Time" }, coroutine.create(function(result)
+		local sysUpTime = ax_session:sysUpTime()
+
+		local ifOperStatus = ((bit32.band(result.data[1].int, 0x00ff00) / 256) == 3) and 1 or 2
+		if ifTableMIB._ifOperStatus ~= ifOperStatus then
+			ifTableMIB._ifOperStatus = ifOperStatus
+			ifTableMIB._ifLastChange = sysUpTime
+		end
+
+		-- use Link Time to check we have not missed anything
+		-- the slip time is because we are polling a second resolution timer
+		local LinkUpTime = math.max(0, sysUpTime - (result.data[2].int * 100))
+		if (LinkUpTime + 100) < ifTableMIB._ifLastChange then
+			ifTableMIB._ifLastChange = LinkUpTime
+		end
+
+		wheel[1000] = ifTable_wheel
 	end))
 end
-linktime_wheel()
-wheel[1000] = linktime_wheel
-iftableMIB.ifLastChange = function (request)
-	return math.max(0, ax_session:sysUpTime() - (iftableMIB._linktime * 100))
-end
+ifTable_wheel()
 
--- RFC 5650, section 2.1.1
-local mibview_iftable_load = {
+local mibview_ifTable_load = {
 --	[1]	= { ["type"] = agentx.VTYPE.Integer, data = ifindex.data },			-- ifIndex: auto-registered by index_allocate
-	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = iftableMIB.ifDescr },		-- ifDescr
+	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = ifTableMIB.ifDescr },		-- ifDescr
 	[3]	= { ["type"] = agentx.VTYPE.Integer, data = vdsl2MIB[#vdsl2MIB] },		-- ifType
 	[4]	= { ["type"] = agentx.VTYPE.Integer, data = 1500 },				-- ifMtu
-	[5]	= { ["type"] = agentx.VTYPE.Gauge32, data = iftableMIB.ifSpeed },		-- ifSpeed
+	[5]	= { ["type"] = agentx.VTYPE.Gauge32, data = ifTableMIB.ifSpeed },		-- ifSpeed
 	[6]	= { ["type"] = agentx.VTYPE.OctetString, data = "" },				-- ifPhysAddress
 	[7]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifAdminStatus
-	[8]	= { ["type"] = agentx.VTYPE.Integer, data = iftableMIB.ifOperStatus },		-- ifOperStatus
-	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = iftableMIB.ifLastChange },	-- ifLastChange
+	[8]	= { ["type"] = agentx.VTYPE.Integer, data = ifTableMIB.ifOperStatus },		-- ifOperStatus
+	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = ifTableMIB.ifLastChange },	-- ifLastChange
 	-- see for loop below
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },				-- ifOutQLen (deprecated)
 	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }			-- ifSpecific (deprecated)
 }
 
-local iftable = {1,3,6,1,2,1,2,2}
-local iftable_entry = {unpack(iftable)}
-table.insert(iftable_entry, 1)		-- ifEntry
-table.insert(iftable_entry, 0)
-table.insert(iftable_entry, ifindex.data)
+local ifTable = {1,3,6,1,2,1,2,2}
+local ifTable_entry = {unpack(ifTable)}
+table.insert(ifTable_entry, 1)		-- ifEntry
+table.insert(ifTable_entry, 0)
+table.insert(ifTable_entry, ifindex.data)
 
-for k, v in pairs(mibview_iftable_load) do
-	iftable_entry[#iftable_entry - 1] = k
-	ax_session.mibview[iftable_entry] = v
+for k, v in pairs(mibview_ifTable_load) do
+	ifTable_entry[#ifTable_entry - 1] = k
+	ax_session.mibview[ifTable_entry] = v
 end
 
-iftable_entry[#iftable_entry - 1] = 2
-local status, result = ax_session:register({subtree=iftable_entry, range_subid=#iftable_entry - 1, upper_bound=22})
+ifTable_entry[#ifTable_entry - 1] = 2
+local status, result = ax_session:register({subtree=ifTable_entry, range_subid=#ifTable_entry - 1, upper_bound=22})
 if not status then
 	return false, result.error
 end
@@ -112,7 +123,7 @@ local mibview_ifXTable_load = {
 	[1]	= { ["type"] = agentx.VTYPE.OctetString, data = ifXTableMIB.ifName },		-- ifName
 	[15]	= { ["type"] = agentx.VTYPE.Gauge32, data = ifXTableMIB.ifHighSpeed },		-- ifHighSpeed
 	[14]	= { ["type"] = agentx.VTYPE.Integer, data = 2 },				-- ifLinkUpDownTrapEnable (FIXME: should be enabled)
-	[17]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifConnectorPresent (FIXME: poll SFP)
+	[17]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifConnectorPresent (FIXME: poll SFP and recover)
 }
 
 local ifXTable = {1,3,6,1,2,1,31,1,1}
