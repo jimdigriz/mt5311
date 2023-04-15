@@ -259,6 +259,8 @@ if not status then
 	return false, result.error
 end
 
+---- VDSL2-LINE-MIB::xdsl2LineSegmentTable ----
+
 ---- VDSL2-LINE-MIB::xdsl2LineBandTable ----
 
 local xdsl2LineBandTableMIB = {}
@@ -404,6 +406,12 @@ for k, v in pairs(mibview_xdsl2ChannelStatusTable_load) do
 	end
 end
 
+---- VDSL2-LINE-MIB::xdsl2SCStatusTable
+
+---- VDSL2-LINE-MIB::xdsl2SCStatusBandTable
+
+---- VDSL2-LINE-MIB::xdsl2SCStatusSegmentTable
+
 ---- VDSL2-LINE-MIB::xdsl2LineInventoryTable
 
 -- Fortunately Cisco provide what we expect to see here in their documentation
@@ -540,6 +548,22 @@ for k, v in pairs(mibview_xdsl2LineInventoryTable_load) do
 end
 
 ---- VDSL2-LINE-MIB::xdsl2PMLineCurrTable
+
+---- VDSL2-LINE-MIB::xdsl2PMLineInitCurrTable
+
+---- VDSL2-LINE-MIB::xdsl2PMChCurrTable
+
+---- VDSL2-LINE-MIB::xdsl2PMLineHist15MinTable
+
+---- VDSL2-LINE-MIB::xdsl2PMLineInitHist15MinTable
+
+---- VDSL2-LINE-MIB::xdsl2PMChHist15MinTable
+
+---- VDSL2-LINE-MIB::xdsl2PMLineHist1DayTable
+
+---- VDSL2-LINE-MIB::xdsl2PMLineInitHist1DayTable
+
+---- VDSL2-LINE-MIB::xdsl2PMChHist1DTable
 
 ----
 
