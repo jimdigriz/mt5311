@@ -213,8 +213,8 @@ function M:_request (s, t, cb)
 			local cmd = v.cmd or 1
 
 			local reg = type(v.reg) == "string" and register_inv[v.reg] or v.reg
-			if reg == nil then
-				error("unknown reg")
+			if type(reg) ~= "number" then
+				error("unknown reg: " .. tostring(reg))
 			end
 
 			local reglen = v.reglen or 3
