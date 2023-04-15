@@ -66,7 +66,7 @@ local VTYPE = {
 	Gauge32			= 66,
 	TimeTicks		= 67,
 	Opaque			= 68,
-	Counter64		= 67,
+	Counter64		= 70,
 	noSuchObject		= 128,
 	noSuchInstance		= 129,
 	endOfMibView		= 130
@@ -238,7 +238,7 @@ val.enc[VTYPE._VarBind] = function (t)
 	if t.type == VTYPE.Integer or t.type == VTYPE.Counter32 or t.type == VTYPE.Gauge32 or t.type == VTYPE.TimeTicks then
 		data = struct.pack(">I", t.data or 0)
 	elseif t.type == VTYPE.Counter64 then
-		error("nyi")
+		data = struct.pack(">II", (t.data or 0) / 2^32, bit32.band(t.data or 0, (2^32 - 1)))
 	elseif t.type == VTYPE.ObjectIdentifer then
 		data = val.enc[VTYPE.ObjectIdentifer](t.data)
 	elseif t.type == VTYPE.OctetString or t.type == VTYPE.IpAddress or t.type == VTYPE.Opaque then
