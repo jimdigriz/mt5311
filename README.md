@@ -117,11 +117,11 @@ If there is no error it means everything is are working, otherwise recheck that 
 
 Assuming that you have your SNMP client and MIBs correctly set up on your workstation (`apt get install --no-install-recommends snmp snmp-mibs-downloader`), you should be able to see the EBM 'interface' appear using something like the following commands (you may need to adjust your authentication settings):
 
-    snmptable -m ALL -Ci -Cw $(tput cols) -v 2c -c public 192.0.2.1 IF-MIB::ifTable
-    snmptable -m ALL -Ci -Cw $(tput cols) -v 2c -c public 192.0.2.1 IF-MIB::ifXTable
-    snmpwalk  -m ALL                      -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineTable
-    snmptable -m ALL -Ci -Cw $(tput cols) -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineBandTable
-    snmpwalk  -m ALL                      -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2ChannelStatusTable
+    snmptable -m ALL -Ci -Cw ${COLUMNS:-80} -v 2c -c public 192.0.2.1 IF-MIB::ifTable
+    snmptable -m ALL -Ci -Cw ${COLUMNS:-80} -v 2c -c public 192.0.2.1 IF-MIB::ifXTable
+    snmpwalk  -m ALL                        -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineTable
+    snmptable -m ALL -Ci -Cw ${COLUMNS:-80} -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineBandTable
+    snmpwalk  -m ALL                        -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2ChannelStatusTable
 
 **N.B.** you may need to adjust your `/etc/snmp/snmpd.conf` on your router for this to work, in particularly the parameters `agentaddress` and `rocommunity`/`rouser`
 
