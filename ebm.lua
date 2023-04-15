@@ -230,9 +230,6 @@ function M:_request (s, t, cb)
 	-- Request Header: [payload len (2 bytes)][flags (1 byte)][seq (4 bytes)][status (1 byte)]
 	pkt = pkt .. struct.pack(">HBIB", payload:len(), flags, requestID, status) .. payload
 
-	-- Padding
-	pkt = pkt .. string.rep("\0", math.max(0, 64 - pkt:len()))
-
 	assert(socket.send(self.fd, pkt) == pkt:len())
 
 	local status, result
