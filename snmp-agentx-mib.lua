@@ -255,49 +255,37 @@ xdsl2LineBandTableMIB.xdsl2LineBand = function (request)
 end
 xdsl2LineBandTableMIB._xdsl2LineBandStatus = function (request, name)
 	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
-	local bands = {}
-	if xdsl2LineBand == 1 or xdsl2LineBand == 3 then
-		table.insert(bands, name .. " US0")
+
+	local reg
+	if xdsl2LineBand == 1 then
+		reg = "(US)"
+	elseif xdsl2LineBand == 2 then
+		reg = "(DS)"
+	elseif xdsl2LineBand == 3 then
+		reg = "US0"
+	elseif xdsl2LineBand == 4 then
+		reg = "DS1"
+	elseif xdsl2LineBand == 5 then
+		reg = "US1"
+	elseif xdsl2LineBand == 6 then
+		reg = "DS2"
+	elseif xdsl2LineBand == 7 then
+		reg = "US2"
+	elseif xdsl2LineBand == 8 then
+		reg = "DS3"
+	elseif xdsl2LineBand == 9 then
+		reg = "US3"
+	elseif xdsl2LineBand == 10 then
+		reg = "DS4"
+	elseif xdsl2LineBand == 11 then
+		reg = "US4"
 	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 5 then
-		table.insert(bands, name .. " US1")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 7 then
-		table.insert(bands, name .. " US2")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 9 then
-		table.insert(bands, name .. " US3")
-	end
-	if xdsl2LineBand == 1 or xdsl2LineBand == 11 then
-		table.insert(bands, name .. " US4")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 4 then
-		table.insert(bands, name .. " DS1")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 6 then
-		table.insert(bands, name .. " DS2")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 8 then
-		table.insert(bands, name .. " DS3")
-	end
-	if xdsl2LineBand == 2 or xdsl2LineBand == 10 then
-		table.insert(bands, name .. " DS4")
-	end
+	reg = name .. " " .. reg
+
 	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
 	return coroutine.create(function ()
-		local result = ebm_session_read(bands)
-
-		if #bands == 1 then
-			return result[1].int + ((result[1].int < 0x7ffffe) and 0 or (0x7ffffffe - 0x7ffffe))
-		end
-
-		local value = 0
-		for i, v in ipairs(result) do
-			if v.int < 0x7ffffe then
-				value = value + v.int
-			end
-		end
-		return math.floor(value / #result)
+		local result = ebm_session_read({ reg })
+		return result[1].int + ((result[1].int < 0x7ffffe) and 0 or (0x7ffffffe - 0x7ffffe))
 	end)
 end
 xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten = function (request)
