@@ -126,10 +126,19 @@ end
 
 local mibview_ifXTable_load = {
 	[1]	= { ["type"] = agentx.VTYPE.OctetString, data = ifXTableMIB.ifName },		-- ifName
+--	[14]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifLinkUpDownTrapEnable (FIXME: should be enabled)
 	[15]	= { ["type"] = agentx.VTYPE.Gauge32, data = ifXTableMIB.ifHighSpeed },		-- ifHighSpeed
-	[14]	= { ["type"] = agentx.VTYPE.Integer, data = 2 },				-- ifLinkUpDownTrapEnable (FIXME: should be enabled)
+	[16]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifPromiscuousMode
 	[17]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifConnectorPresent (FIXME: poll SFP and recover)
+	[18]	= { ["type"] = agentx.VTYPE.OctetString, data = "" },				-- ifAlias
+	[19]	= { ["type"] = agentx.VTYPE.TimeTicks, data = 0 },				-- ifCounterDiscontinuityTime
 }
+for i=2,5 do
+	mibview_ifXTable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
+end
+for i=6,13 do
+	mibview_ifXTable_load[i] = { ["type"] = agentx.VTYPE.Counter64, data = 0 }
+end
 
 local ifXTable = {1,3,6,1,2,1,31,1,1}
 local ifXTable_entry = {unpack(ifXTable)}
