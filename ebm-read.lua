@@ -30,7 +30,7 @@ end
 local regs = {unpack(arg, 3)}
 for i, v in ipairs(regs) do
 	local n = tonumber(v)
-	if v then
+	if n then
 		regs[i] = n
 	end
 end
