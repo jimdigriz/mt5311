@@ -11,6 +11,13 @@ function string.tohex (str)
 	end)):lower()
 end
 
+function string.print (str)
+	return (str:gsub(".", function (c)
+		local b = string.byte(c)
+		return (b >= 0x20 and b < 0x80) and c or "."
+	end))
+end
+
 local dir = arg[0]:match("^(.-/?)[^/]+.lua$")
 local status, ebm = pcall(function () return require "ebm" end)
 if not status then
@@ -42,7 +49,7 @@ end
 
 ebm_session:close()
 
-print("reg", "hex", "int")
+print("reg", "hex", "int", "str")
 for i, v in ipairs(result.data) do
-	print(arg[2 + i], v.raw:tohex(), v.int)
+	print(arg[2 + i], v.raw:tohex(), v.int, v.raw:print())
 end

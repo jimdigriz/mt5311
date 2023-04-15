@@ -56,10 +56,10 @@ A one shot utility to query the SFP for information.
 To use it, run as `root`:
 
     # lua /opt/mt5311/ebm-read.lua eth1 00:03:79:06:89:d7 xdsl2LineStatusAttainableRateUs xdsl2LineStatusAttainableRateDs xdsl2LineStatusElectricalLength
-    reg	hex	int
-    xdsl2LineStatusAttainableRateUs	001a25	6693
-    xdsl2LineStatusAttainableRateDs	00af60	44896
-    xdsl2LineStatusElectricalLength	0000b8	184
+    reg	hex	int	str
+    xdsl2LineStatusAttainableRateUs	001a19	6681	...
+    xdsl2LineStatusAttainableRateDs	00af60	44896	..`
+    xdsl2LineStatusElectricalLength	0000b8	184	...
 
 The output is in TSV (tab separated variable) format.
 
