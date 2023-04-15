@@ -208,7 +208,7 @@ function M:_request (s, t, cb)
 
 		t = t.cmd and { t } or t
 		for i, v in ipairs(t) do
-			v = (type(v) == "string") and { reg = v } or v
+			v = (type(v) == "table") and v or { reg = v }
 
 			local cmd = v.cmd or 1
 
