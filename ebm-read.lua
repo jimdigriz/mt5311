@@ -27,7 +27,15 @@ if not ebm_session then
 	error(err)
 end
 
-local status, result = ebm_session:read({unpack(arg, 3)})
+local regs = {unpack(arg, 3)}
+for i, v in ipairs(regs) do
+	local n = tonumber(v)
+	if v then
+		regs[i] = n
+	end
+end
+
+local status, result = ebm_session:read(regs)
 if not status then
 	error(result)
 end

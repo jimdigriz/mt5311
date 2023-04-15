@@ -63,7 +63,7 @@ To use it, run as `root`:
 
 The output is in TSV (tab separated variable) format.
 
-You should look at the [`register.map`](./register.map) file for other registers that you can read.
+You should look at the [`register.map`](./register.map) file for other registers that you can read, but as well as the names you can provide the register address (integer or hexidecimal) directly.
 
 ## SNMP
 
