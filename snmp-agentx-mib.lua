@@ -341,6 +341,73 @@ for k, v in pairs(mibview_xdsl2LineBandTable_load) do
 	end
 end
 
+---- VDSL2-LINE-MIB::xdsl2ChannelStatusTable
+
+local xdsl2ChannelStatusTableMIB = {}
+xdsl2ChannelStatusTableMIB._direction = function(name)
+	-- 1 = central office transceiver -> xTU-C -> xtuc
+	-- 2 = remote site transceiver -> xTU-R -> xtur
+	return name[#name]
+end
+xdsl2ChannelStatusTableMIB.xdsl2ChStatusActDataRate = function (request)
+	local reg
+	if xdsl2ChannelStatusTableMIB._direction(request.name) == 1 then
+		reg = "xdsl2ChStatusActDataRate0 (US)"
+	else
+		reg = "xdsl2ChStatusActDataRate2 (DS)"
+	end
+	return coroutine.create(function ()
+		local result = ebm_session_read({ reg })
+		return result[1].int * 1000
+	end)
+end
+xdsl2ChannelStatusTableMIB.xdsl2ChStatusPrevDataRate = function (request)
+	local reg
+	if xdsl2ChannelStatusTableMIB._direction(request.name) == 1 then
+		reg = "xdsl2ChStatusPrevDataRate0 (US)"
+	else
+		reg = "xdsl2ChStatusPrevDataRate2 (DS)"
+	end
+	return coroutine.create(function ()
+		local result = ebm_session_read({ reg })
+		return result[1].int * 1000
+	end)
+end
+
+local mibview_xdsl2ChannelStatusTable_load = {
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2ChannelStatusTableMIB.xdsl2ChStatusUnit },		-- xdsl2ChStatusUnit (not-accessible)
+	[2]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2ChannelStatusTableMIB.xdsl2ChStatusActDataRate },	-- xdsl2ChStatusActDataRate
+	[3]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2ChannelStatusTableMIB.xdsl2ChStatusPrevDataRate },	-- xdsl2ChStatusPrevDataRate
+}
+
+local xdsl2ChannelStatusTable_entry = {unpack(vdsl2MIB)}
+table.insert(xdsl2ChannelStatusTable_entry, 1)			-- xdsl2Objects
+table.insert(xdsl2ChannelStatusTable_entry, 2)			-- xdsl2Status
+table.insert(xdsl2ChannelStatusTable_entry, 2)			-- xdsl2ChannelStatusTable
+table.insert(xdsl2ChannelStatusTable_entry, 1)			-- xdsl2ChannelStatusEntry
+table.insert(xdsl2ChannelStatusTable_entry, 0)
+table.insert(xdsl2ChannelStatusTable_entry, ifIndex.data)	-- ifIndex
+table.insert(xdsl2ChannelStatusTable_entry, 2)			-- xdsl2ChStatusUnit (remote site transceiver -> xTU-R -> xtur)
+
+for k, v in pairs(mibview_xdsl2ChannelStatusTable_load) do
+	xdsl2ChannelStatusTable_entry[#xdsl2ChannelStatusTable_entry - 2] = k
+	for i=1,2 do
+		xdsl2ChannelStatusTable_entry[#xdsl2ChannelStatusTable_entry] = i
+		ax_session.mibview[xdsl2ChannelStatusTable_entry] = v
+	end
+
+	-- multi-index tables we need to register each entry as registering at the lowest subid does not work
+	xdsl2ChannelStatusTable_entry[#xdsl2ChannelStatusTable_entry] = 1
+	local status, result = ax_session:register({subtree=xdsl2ChannelStatusTable_entry, range_subid=#xdsl2ChannelStatusTable_entry, upper_bound=2})
+	if not status then
+		return false, result.error
+	end
+end
+
+---- VDSL2-LINE-MIB::xdsl2LineInventoryTable
+
+---- VDSL2-LINE-MIB::xdsl2PMLineCurrTable
+
 ----
 
 return true
