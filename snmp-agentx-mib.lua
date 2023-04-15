@@ -90,6 +90,9 @@ local mibview_ifTable_load = {
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },				-- ifOutQLen (deprecated)
 	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }			-- ifSpecific (deprecated)
 }
+for i=10,20 do
+	mibview_ifTable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
+end
 
 local ifTable = {1,3,6,1,2,1,2,2}
 local ifTable_entry = {unpack(ifTable)}
