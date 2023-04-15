@@ -22,8 +22,8 @@ local ifTableMIB = {}
 ifTableMIB.ifDescr = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({
-			"CPE Vendor ID (and SpecInfo) [SI1,SI0,0]",
-			"CPE Vendor ID [1:3]",
+			"CPE Vendor ID (System) [0:2]",
+			"CPE Vendor ID (System) [3:5]",
 			"CPE Inventory Version [0:2]",
 			"CPE Inventory Version [3:5]",
 			"CPE Inventory Version [6:8]",
@@ -387,7 +387,7 @@ table.insert(xdsl2ChannelStatusTable_entry, 2)			-- xdsl2ChannelStatusTable
 table.insert(xdsl2ChannelStatusTable_entry, 1)			-- xdsl2ChannelStatusEntry
 table.insert(xdsl2ChannelStatusTable_entry, 0)
 table.insert(xdsl2ChannelStatusTable_entry, ifIndex.data)	-- ifIndex
-table.insert(xdsl2ChannelStatusTable_entry, 2)			-- xdsl2ChStatusUnit (remote site transceiver -> xTU-R -> xtur)
+table.insert(xdsl2ChannelStatusTable_entry, 0)			-- xdsl2ChStatusUnit
 
 for k, v in pairs(mibview_xdsl2ChannelStatusTable_load) do
 	xdsl2ChannelStatusTable_entry[#xdsl2ChannelStatusTable_entry - 2] = k
@@ -405,6 +405,139 @@ for k, v in pairs(mibview_xdsl2ChannelStatusTable_load) do
 end
 
 ---- VDSL2-LINE-MIB::xdsl2LineInventoryTable
+
+-- Fortunately Cisco provide what we expect to see here in their documentation
+--
+-- https://www.cisco.com/c/en/us/td/docs/routers/access/1101/software/configuration/guide/b_IR1101config/m_configuring_dsl.html#Cisco_Concept.dita_a2f92f08-5fe7-4cba-87da-5085aad028b4
+--
+-- > show controllers vdsl 0/0/0
+-- Controller VDSL 0/0/0 is UP
+-- Daemon Status: UP 
+-- XTU-R (DS) XTU-C (US)
+--
+-- Chip Vendor ID: 'META' 'IKNS'
+-- Chip Vendor Specific: 0x0000 0x0101
+-- Chip Vendor Country: 0xB500 0xB500
+-- Modem Vendor ID: 'META' ' '
+-- Modem Vendor Specific: 0x0000 0x2AB0
+-- Modem Vendor Country: 0xB500 0x37A0
+-- Serial Number Near: E80462D1B001 SFP-V5311-T-R 8431
+-- Serial Number Far: ^A5u 
+-- Modem Version Near: 1_62_8431 MT5311
+-- Modem Version Far: 6.7.0.15IK005010
+
+local xdsl2LineInventoryTableMIB = {}
+xdsl2LineInventoryTableMIB._direction = function(name)
+	-- 1 = central office transceiver -> xTU-C -> xtuc
+	-- 2 = remote site transceiver -> xTU-R -> xtur
+	return name[#name]
+end
+xdsl2LineInventoryTableMIB._xdsl2LInvVendorId = function (request, name)
+	local dir = xdsl2LineInventoryTableMIB._direction(request)
+	local regs = {
+		"Vendor ID (" .. name .. ") [0:2]",
+		"Vendor ID (" .. name .. ") [3:5]",
+		"Vendor ID (" .. name .. ") [6:8]"
+	}
+	for i, v in ipairs(regs) do
+		regs[i] = (dir == 1 and "CO" or "CPE") .. " " .. v
+	end
+	return coroutine.create(function ()
+		local result = ebm_session_read(regs)
+		local vid = ""
+		for i, v in ipairs(result) do
+			vid = vid .. v.raw
+		end
+		return vid:sub(1, 8)
+	end)
+end
+xdsl2LineInventoryTableMIB.xdsl2LInvG994VendorId = function (request)
+	return xdsl2LineInventoryTableMIB._xdsl2LInvVendorId(request, "G.994")
+end
+xdsl2LineInventoryTableMIB.xdsl2LInvSystemVendorId = function (request)
+	return xdsl2LineInventoryTableMIB._xdsl2LInvVendorId(request, "System")
+end
+xdsl2LineInventoryTableMIB.xdsl2LInvVersionNumber = function (request)
+	local dir = xdsl2LineInventoryTableMIB._direction(request)
+	local regs = {
+		"Inventory Version [0:2]",
+		"Inventory Version [3:5]",
+		"Inventory Version [6:8]",
+		"Inventory Version [9:11]",
+		"Inventory Version [12:14]",
+		"Inventory Version [15:17]"
+	}
+	for i, v in ipairs(regs) do
+		regs[i] = (dir == 1 and "CO" or "CPE") .. " " .. v
+	end
+	return coroutine.create(function ()
+		local result = ebm_session_read(regs)
+		local vid = ""
+		for i, v in ipairs(result) do
+			vid = vid .. v.raw
+		end
+		return vid:sub(1, 16)
+	end)
+end
+xdsl2LineInventoryTableMIB.xdsl2LInvSerialNumber = function (request)
+	local dir = xdsl2LineInventoryTableMIB._direction(request)
+	local regs = {
+		"Serial Number [0:2]",
+		"Serial Number [3:5]",
+		"Serial Number [6:8]",
+		"Serial Number [9:11]",
+		"Serial Number [12:14]",
+		"Serial Number [15:17]",
+		"Serial Number [18:20]",
+		"Serial Number [21:23]",
+		"Serial Number [24:26]",
+		"Serial Number [27:29]",
+		"Serial Number [30:32]"
+	}
+	for i, v in ipairs(regs) do
+		regs[i] = (dir == 1 and "CO" or "CPE") .. " " .. v
+	end
+	return coroutine.create(function ()
+		local result = ebm_session_read(regs)
+		local vid = ""
+		for i, v in ipairs(result) do
+			vid = vid .. v.raw
+		end
+		return vid
+	end)
+end
+
+local mibview_xdsl2LineInventoryTable_load = {
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineInventoryTableMIB.xdsl2ChStatusUnit },		-- xdsl2ChStatusUnit (not-accessible)
+	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = xdsl2LineInventoryTableMIB.xdsl2LInvG994VendorId },	-- xdsl2LInvG994VendorId
+	[3]	= { ["type"] = agentx.VTYPE.OctetString, data = xdsl2LineInventoryTableMIB.xdsl2LInvSystemVendorId },	-- xdsl2LInvSystemVendorId
+	[4]	= { ["type"] = agentx.VTYPE.OctetString, data = xdsl2LineInventoryTableMIB.xdsl2LInvVersionNumber },	-- xdsl2LInvVersionNumber
+	[5]	= { ["type"] = agentx.VTYPE.OctetString, data = xdsl2LineInventoryTableMIB.xdsl2LInvSerialNumber },	-- xdsl2LInvSerialNumber
+}
+
+local xdsl2LineInventoryTable_entry = {unpack(vdsl2MIB)}
+table.insert(xdsl2LineInventoryTable_entry, 1)			-- xdsl2Objects
+table.insert(xdsl2LineInventoryTable_entry, 3)			-- xdsl2Inventory
+table.insert(xdsl2LineInventoryTable_entry, 1)			-- xdsl2LineInventoryTable
+table.insert(xdsl2LineInventoryTable_entry, 1)			-- xdsl2LineInventoryEntry
+table.insert(xdsl2LineInventoryTable_entry, 0)
+table.insert(xdsl2LineInventoryTable_entry, ifIndex.data)	-- ifIndex
+table.insert(xdsl2LineInventoryTable_entry, 0)			-- xdsl2LInvUnit
+
+for k, v in pairs(mibview_xdsl2LineInventoryTable_load) do
+	xdsl2LineInventoryTable_entry[#xdsl2ChannelStatusTable_entry - 2] = k
+	for i=1,2 do
+		xdsl2LineInventoryTable_entry[#xdsl2ChannelStatusTable_entry] = i
+		ax_session.mibview[xdsl2LineInventoryTable_entry] = v
+	end
+
+	-- multi-index tables we need to register each entry as registering at the lowest subid does not work
+	xdsl2LineInventoryTable_entry[#xdsl2ChannelStatusTable_entry] = 1
+	local status, result = ax_session:register({subtree=xdsl2LineInventoryTable_entry, range_subid=#xdsl2ChannelStatusTable_entry, upper_bound=2})
+	if not status then
+		return false, result.error
+	end
+end
 
 ---- VDSL2-LINE-MIB::xdsl2PMLineCurrTable
 

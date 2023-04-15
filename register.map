@@ -300,29 +300,70 @@
 # Frames 83 - 86
 0x007ea4	CO MAC Address [0:2]						# "\0\0\0"
 0x007ea5	CO MAC Address [3:5]						# "\0\0\0"
-0x007ea6	CO MAC Address [6:8]						# "\0\0\0"
-0x007ea7	CO MAC Address [9:11]						# "\0\0\0"
+# Discovered by Scanning
+0x007ede	CPE MAC Address [0:2]						# "\x00\x03\x79" ---\
+0x007edf	CPE MAC Address [3:5]						# "\x06\x89\xd7"    \--> 00:03:79:06:89:d7
 # Frames 1557 - 1558
+# Vendor ID = [2 bytes T.35 country code] + [4 bytes Vendor ID] + [2 bytes Vendor Specific]
 # Far End
+0x0079c7	CO Termination Unit						# "\x00\x00\x01" -> xTU-C
+0x0079c8	CO Vendor ID (G.994) [0:2]					# "\xb5\x00\x42" -> "\xb5\x00" -> United States, "\x42" -> "B"
+0x0079c9	CO Vendor ID (G.994) [3:5]					# "DCM"
+0x0079ca	CO Vendor ID (G.994) [6:8]					# "\x1c\xc0\x00" -> "\x1c\xc0"
+0x0079cb	CO Vendor ID (System) [0:2]					# "\xb5\x00\x42" -> "\xb5\x00" -> United States, "\x42" -> "B"
+0x0079cc	CO Vendor ID (System) [3:5]					# "DCM"
+0x0079cd	CO Vendor ID (System) [6:8]					# "\x00\x00\x00" -> "\x00\x00"
+0x0079ce 	CO Inventory Version [0:2]					# "v12"
+0x0079cf	CO Inventory Version [3:5]					# ".00"
+0x0079d0	CO Inventory Version [6:8]					# ".28"
+0x0079d1	CO Inventory Version [9:11]					# "   "
+0x0079d2	CO Inventory Version [12:14]					# "   "
+0x0079d3	CO Inventory Version [15:17]					# "\0\0\0" -> "\0\0"
+0x0079d4	CO Serial Number [0:2]						# "eq "
+0x0079d5	CO Serial Number [3:5]						# "nr "
+0x0079d6	CO Serial Number [6:8]						# "por"
+0x0079d7	CO Serial Number [9:11]						# "t:1"
+0x0079d8	CO Serial Number [12:14]					# "2  "
+0x0079d9	CO Serial Number [15:17]					# "oem"
+0x0079da	CO Serial Number [18:20]					# "id "
+0x0079db	CO Serial Number [21:23]					# "sof"
+0x0079dc	CO Serial Number [21:23]					# "twa"
+0x0079dd	CO Serial Number [24:26]					# "rer"
+0x0079de	CO Serial Number [27:29]					# "ev\0"
+0x0079df	CO Serial Number [30:32]					# "\0\0\0"
+
 0x007d98	CO Vendor ID [2,1,0]						# "CDB"             /--> BDCM
 0x007d99	CO Vendor ID (and SpecInfo) [SI1,SI0,3]				# "\xC1\xC0" .. "M" \--> C01C [SpecInfo]
-0x0079ce	CO Inventory Version [0:2]					# "v12"    ---------\
-0x0079cf	CO Inventory Version [3:5]					# ".00"             |
-0x0079d0	CO Inventory Version [6:8]					# ".28"             |
-0x0079d1	CO Inventory Version [9:11]					# "   "             |
-0x0079d2	CO Inventory Version [12:14]					# "   "             |
-0x0079d3	CO Inventory Version [15:17]					# "\0\0\0"          \--> v12.00.28
+
 # Near End
+0x0079e3	CPE Termination Unit						# "\x00\x00\x02" -> xTU-R
+0x0079e4	CPE Vendor ID (G.994) [0:2]					# "\xb5\x00\x42" -> "\xb5\x00" -> United States, "\x42" -> "M"
+0x0079e5	CPE Vendor ID (G.994) [3:5]					# "ETA"
+0x0079e6	CPE Vendor ID (G.994) [6:8]					# "\x00\x00\x00" -> "\x00\x00"
+0x0079e7	CPE Vendor ID (System) [0:2]					# "\xb5\x00\x42" -> "\xb5\x00" -> United States, "\x42" -> "M"
+0x0079e8	CPE Vendor ID (System) [3:5]					# "ETA"
+0x0079e9	CPE Vendor ID (System) [6:8]					# "\x00\x00\x00" -> "\x00\x00"
+0x0079ea 	CPE Inventory Version [0:2]					# "1_6"
+0x0079eb	CPE Inventory Version [3:5]					# "0_8"
+0x0079ec	CPE Inventory Version [6:8]					# "255"
+0x0079ed	CPE Inventory Version [9:11]					# " MT"
+0x0079ee	CPE Inventory Version [12:14]					# "531"
+0x0079ef	CPE Inventory Version [15:17]					# "1\0\0" -> "1\0"
+0x0079f0	CPE Serial Number [0:2]						# "000"
+0x0079f1	CPE Serial Number [3:5]						# "379"
+0x0079f2	CPE Serial Number [6:8]						# "068"
+0x0079f3	CPE Serial Number [9:11]					# "9D7"
+0x0079f4	CPE Serial Number [12:14]					# " SF"
+0x0079f5	CPE Serial Number [15:17]					# "P-V"
+0x0079f6	CPE Serial Number [18:20]					# "531"
+0x0079f7	CPE Serial Number [21:23]					# "1-T"
+0x0079f8	CPE Serial Number [21:23]					# "-R "
+0x0079f9	CPE Serial Number [24:26]					# "825"
+0x0079fa	CPE Serial Number [27:29]					# "5\0\0"
+0x0079fb	CPE Serial Number [30:32]					# "\0\0\0"
+
 0x007d9a	CPE Vendor ID [2,1,0]						# "TEM"    ---------/--> META
 0x007d9b	CPE Vendor ID (and SpecInfo) [SI1,SI0,3]			# "\0\0A"           \--> 0000 [SpecInfo]
-0x0079e4	CPE Vendor ID (and SpecInfo) [SI1,SI0,0]			# "\0\0M"  ---------/--> 0000 [SpecInfo]
-0x0079e5	CPE Vendor ID [1:3]						# "ETA"             \--> META
-0x0079ea	CPE Inventory Version [0:2]					# "1_6"    ---------\
-0x0079eb	CPE Inventory Version [3:5]					# "0_8"             |
-0x0079ec	CPE Inventory Version [6:8]					# "255"             |
-0x0079ed	CPE Inventory Version [9:11]					# " MT"             |
-0x0079ee	CPE Inventory Version [12:14]					# "531"             |
-0x0079ef	CPE Inventory Version [15:17]					# "1\0\0"           \--> 1_60_8255 MT5311
 
 # gain wisdom regarding Band Plan, Hlog, QLN and SNR from:
 # * https://www.draytek.co.uk/information/blog/dsl-deep-dive
