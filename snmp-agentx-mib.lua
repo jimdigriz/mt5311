@@ -227,6 +227,18 @@ xdsl2LineTableMIB.xdsl2LineStatusAttainableRateUs = function (request)
 		return result[1].int * 1000
 	end)
 end
+xdsl2LineTableMIB.xdsl2LineStatusActAtpDs = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdsl2LConfProfMaxNomAtpDs" })
+		return result[1].int
+	end)
+end
+xdsl2LineTableMIB.xdsl2LineStatusActAtpUs = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdsl2LConfProfMaxNomAtpUs" })
+		return result[1].int
+	end)
+end
 xdsl2LineTableMIB.xdsl2LineStatusActProfile = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({ "xdsl2LineStatusActProfile" })
@@ -278,8 +290,10 @@ local mibview_xdsl2LineTable_load = {
 	[13]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusXtuTransSys },		-- xdsl2LineStatusXtuTransSys (Issue #1)
 	[20]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusAttainableRateDs },	-- xdsl2LineStatusAttainableRateDs
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusAttainableRateUs },	-- xdsl2LineStatusAttainableRateUs
+	[24]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusActAtpDs },		-- xdsl2LineStatusActAtpDs
+	[25]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusActAtpUs },		-- xdsl2LineStatusActAtpUs
 	[26]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusActProfile },		-- xdsl2LineStatusActProfile (Issue #1)
-	[26]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusActLimitMask },		-- xdsl2LineStatusActLimitMask (Issue #1)
+	[27]	= { ["type"] = agentx.VTYPE.Opaque, data = xdsl2LineTableMIB.xdsl2LineStatusActLimitMask },		-- xdsl2LineStatusActLimitMask (Issue #1)
 	[31]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineTableMIB.xdsl2LineStatusElectricalLength },	-- xdsl2LineStatusElectricalLength
 	[36]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineTableMIB.xdsl2LineStatusTrellisDs },		-- xdsl2LineStatusTrellisDs
 	[37]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineTableMIB.xdsl2LineStatusTrellisUs },		-- xdsl2LineStatusTrellisUs
