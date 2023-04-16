@@ -77,7 +77,7 @@ ifTableMIB.ifOutError = function (request)
 	end)
 end
 local function ifTable_wheel ()
-	ebm_session:read({ "PhyStatus(?)", "Link Time" }, coroutine.create(function(result)
+	ebm_session:read({ "PhyStatus(?)", "Link Time" }, coroutine.create(function (result)
 		local sysUpTime = ax_session:sysUpTime()
 
 		local ifOperStatus = ((bit32.band(result.data[1].int, 0x00ff00) / 256) == 3) and 1 or 2
@@ -391,10 +391,8 @@ end
 ---- VDSL2-LINE-MIB::xdsl2ChannelStatusTable
 
 local xdsl2ChannelStatusTableMIB = {}
-xdsl2ChannelStatusTableMIB._direction = function(name)
-	-- 1 = central office transceiver -> xTU-C -> xtuc
-	-- 2 = remote site transceiver -> xTU-R -> xtur
-	return name[#name]
+xdsl2ChannelStatusTableMIB._direction = function (request)
+	return xdsl2LineBandTableMIB.xdsl2LineBand(request)
 end
 xdsl2ChannelStatusTableMIB.xdsl2ChStatusActDataRate = function (request)
 	local reg
@@ -480,13 +478,11 @@ end
 -- Modem Version Far: 6.7.0.15IK005010
 
 local xdsl2LineInventoryTableMIB = {}
-xdsl2LineInventoryTableMIB._direction = function(name)
-	-- 1 = central office transceiver -> xTU-C -> xtuc
-	-- 2 = remote site transceiver -> xTU-R -> xtur
-	return name[#name]
+xdsl2LineInventoryTableMIB.xdsl2LInvUnit = function (request)
+	return xdsl2LineBandTableMIB.xdsl2LineBand(request)
 end
 xdsl2LineInventoryTableMIB._xdsl2LInvVendorId = function (request, name)
-	local dir = xdsl2LineInventoryTableMIB._direction(request)
+	local dir = xdsl2LineInventoryTableMIB.xdsl2LInvUnit(request)
 	local regs = {
 		"Vendor ID (" .. name .. ") [0:2]",
 		"Vendor ID (" .. name .. ") [3:5]",
@@ -511,7 +507,7 @@ xdsl2LineInventoryTableMIB.xdsl2LInvSystemVendorId = function (request)
 	return xdsl2LineInventoryTableMIB._xdsl2LInvVendorId(request, "System")
 end
 xdsl2LineInventoryTableMIB.xdsl2LInvVersionNumber = function (request)
-	local dir = xdsl2LineInventoryTableMIB._direction(request)
+	local dir = xdsl2LineInventoryTableMIB.xdsl2LInvUnit(request)
 	local regs = {
 		"Inventory Version [0:2]",
 		"Inventory Version [3:5]",
@@ -533,7 +529,7 @@ xdsl2LineInventoryTableMIB.xdsl2LInvVersionNumber = function (request)
 	end)
 end
 xdsl2LineInventoryTableMIB.xdsl2LInvSerialNumber = function (request)
-	local dir = xdsl2LineInventoryTableMIB._direction(request)
+	local dir = xdsl2LineInventoryTableMIB.xdsl2LInvUnit(request)
 	local regs = {
 		"Serial Number [0:2]",
 		"Serial Number [3:5]",
@@ -561,7 +557,7 @@ xdsl2LineInventoryTableMIB.xdsl2LInvSerialNumber = function (request)
 end
 
 local mibview_xdsl2LineInventoryTable_load = {
---	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineInventoryTableMIB.xdsl2ChStatusUnit },		-- xdsl2ChStatusUnit (not-accessible)
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineInventoryTableMIB.xdsl2LInvUnit },			-- xdsl2LInvUnit (not-accessible)
 	[2]	= { ["type"] = agentx.VTYPE.OctetString, data = xdsl2LineInventoryTableMIB.xdsl2LInvG994VendorId },	-- xdsl2LInvG994VendorId
 	[3]	= { ["type"] = agentx.VTYPE.OctetString, data = xdsl2LineInventoryTableMIB.xdsl2LInvSystemVendorId },	-- xdsl2LInvSystemVendorId
 	[4]	= { ["type"] = agentx.VTYPE.OctetString, data = xdsl2LineInventoryTableMIB.xdsl2LInvVersionNumber },	-- xdsl2LInvVersionNumber
@@ -593,6 +589,71 @@ for k, v in pairs(mibview_xdsl2LineInventoryTable_load) do
 end
 
 ---- VDSL2-LINE-MIB::xdsl2PMLineCurrTable
+
+local xdsl2PMLineCurrTableMIB = {}
+xdsl2PMLineCurrTableMIB.xdsl2PMLCurrUnit = function (request)
+	return xdsl2LineBandTableMIB.xdsl2LineBand(request)
+end
+xdsl2PMLineCurrTableMIB._xdsl2PMLCurr = function (name)
+	return function (request)
+		local reg
+		if xdsl2PMLineCurrTableMIB.xdsl2PMLCurrUnit(request) == 1 then
+			reg = "(US)"
+		else
+			reg = "(DS)"
+		end
+		reg = name .. " " .. reg
+		return coroutine.create(function ()
+			local result = ebm_session_read({ reg })
+			return result[1].int
+		end)
+	end
+end
+
+local mibview_xdsl2PMLineCurrTable_load = {
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2PMLineCurrTableMIB.xdsl2PMLCurrUnit },				-- xdsl2PMLCurrUnit (not-accessible)
+--	[2]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2PMLineCurrTableMIB.xdsl2PMLCurr15MValidIntervals },		-- xdsl2PMLCurr15MValidIntervals
+--	[3]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2PMLineCurrTableMIB.xdsl2PMLCurr15MInvalidIntervals },		-- xdsl2PMLCurr15MInvalidIntervals
+	[4]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("15M Elapsed time") },	-- xdsl2PMLCurr15MTimeElapsed
+	[5]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("15M FECS") },		-- xdsl2PMLCurr15MFecs
+	[6]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("15M ES") },		-- xdsl2PMLCurr15MEs
+	[7]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("15M SES") },		-- xdsl2PMLCurr15MSes
+	[8]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("15M LOSS") },		-- xdsl2PMLCurr15MLoss
+	[9]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("15M UAS") },		-- xdsl2PMLCurr15MUas
+--	[10]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB.xdsl2PMLCurr1DayValidIntervals },		-- xdsl2PMLCurr1DayValidIntervals
+--	[11]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB.xdsl2PMLCurr1DayInvalidIntervals },	-- xdsl2PMLCurr1DayInvalidIntervals
+	[12]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("1Day Elapsed time") },	-- xdsl2PMLCurr1DayTimeElapsed
+	[13]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("1Day FECS") },		-- xdsl2PMLCurr1DayFecs
+	[14]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("1Day ES") },		-- xdsl2PMLCurr1DayEs
+	[15]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("1Day SES") },		-- xdsl2PMLCurr1DaySes
+	[16]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("1Day LOSS") },		-- xdsl2PMLCurr1DayLoss
+	[17]	= { ["type"] = agentx.VTYPE.Counter32, data = xdsl2PMLineCurrTableMIB._xdsl2PMLCurr("1Day UAS") },		-- xdsl2PMLCurr1DayUas
+}
+
+local xdsl2PMLineCurrTable_entry = {unpack(vdsl2MIB)}
+table.insert(xdsl2PMLineCurrTable_entry, 1)			-- xdsl2Objects
+table.insert(xdsl2PMLineCurrTable_entry, 4)			-- xdsl2PM
+table.insert(xdsl2PMLineCurrTable_entry, 1)			-- xdsl2PMLine
+table.insert(xdsl2PMLineCurrTable_entry, 1)			-- xdsl2PMLineCurrTable
+table.insert(xdsl2PMLineCurrTable_entry, 1)			-- xdsl2PMLineCurrEntry
+table.insert(xdsl2PMLineCurrTable_entry, 0)
+table.insert(xdsl2PMLineCurrTable_entry, ifIndex.data)		-- ifIndex
+table.insert(xdsl2PMLineCurrTable_entry, 0)			-- xdsl2PMLCurrUnit
+
+for k, v in pairs(mibview_xdsl2PMLineCurrTable_load) do
+	xdsl2PMLineCurrTable_entry[#xdsl2PMLineCurrTable_entry - 2] = k
+	for i=1,2 do
+		xdsl2PMLineCurrTable_entry[#xdsl2PMLineCurrTable_entry] = i
+		ax_session.mibview[xdsl2PMLineCurrTable_entry] = v
+	end
+
+	-- multi-index tables we need to register each entry as registering at the lowest subid does not work
+	xdsl2PMLineCurrTable_entry[#xdsl2PMLineCurrTable_entry] = 1
+	local status, result = ax_session:register({subtree=xdsl2PMLineCurrTable_entry, range_subid=#xdsl2PMLineCurrTable_entry, upper_bound=2})
+	if not status then
+		return false, result.error
+	end
+end
 
 ---- VDSL2-LINE-MIB::xdsl2PMLineInitCurrTable
 

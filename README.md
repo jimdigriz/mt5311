@@ -55,7 +55,7 @@ A one shot utility to query the SFP for information.
 
 To use it, run as `root`:
 
-    # lua /opt/mt5311/ebm-read.lua eth1 00:03:79:06:89:d7 xdsl2LineStatusAttainableRateUs xdsl2LineStatusAttainableRateDs xdsl2LineStatusElectricalLength
+    # lua /opt/mt5311/ebm-read.lua eth1 00:11:22:33:44:55 xdsl2LineStatusAttainableRateUs xdsl2LineStatusAttainableRateDs xdsl2LineStatusElectricalLength
     reg	hex	int	str
     xdsl2LineStatusAttainableRateUs	001a19	6681	...
     xdsl2LineStatusAttainableRateDs	00af60	44896	..`
@@ -64,6 +64,12 @@ To use it, run as `root`:
 The output is in TSV (tab separated variable) format.
 
 You should look at the [`register.map`](./register.map) file for other registers that you can read, but as well as the names you can provide the register address (integer or hexidecimal) directly.
+
+### Scanning
+
+You can use this tool to scan all the register space:
+
+    seq 0x7000 0x7fff | xargs -n1 printf "0x%x\n" | sudo xargs -n 20 lua /opt/mt5311/ebm-read.lua eth1 00:11:22:33:44:55
 
 ## SNMP
 
@@ -122,6 +128,8 @@ Assuming that you have your SNMP client and MIBs correctly set up on your workst
     snmpwalk  -m ALL                        -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineTable
     snmptable -m ALL -Ci -Cw ${COLUMNS:-80} -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineBandTable
     snmpwalk  -m ALL                        -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2ChannelStatusTable
+    snmpwalk  -m ALL                        -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2LineInventoryTable
+    snmpwalk  -m ALL                        -v 2c -c public 192.0.2.1 VDSL2-LINE-MIB::xdsl2PMLineCurrTable
 
 **N.B.** you may need to adjust your `/etc/snmp/snmpd.conf` on your router for this to work, in particularly the parameters `agentaddress` and `rocommunity`/`rouser`
 
