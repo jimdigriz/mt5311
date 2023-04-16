@@ -312,56 +312,49 @@ local xdsl2LineBandTableMIB = {}
 xdsl2LineBandTableMIB.xdsl2LineBand = function (request)
 	return request.name[#request.name]
 end
-xdsl2LineBandTableMIB._xdsl2LineBandStatus = function (request, name)
-	local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
+xdsl2LineBandTableMIB._xdsl2LineBandStatus = function (name)
+	return function (request)
+		local xdsl2LineBand = xdsl2LineBandTableMIB.xdsl2LineBand(request)
 
-	local reg
-	if xdsl2LineBand == 1 then
-		reg = "(US)"
-	elseif xdsl2LineBand == 2 then
-		reg = "(DS)"
-	elseif xdsl2LineBand == 3 then
-		reg = "US0"
-	elseif xdsl2LineBand == 4 then
-		reg = "DS1"
-	elseif xdsl2LineBand == 5 then
-		reg = "US1"
-	elseif xdsl2LineBand == 6 then
-		reg = "DS2"
-	elseif xdsl2LineBand == 7 then
-		reg = "US2"
-	elseif xdsl2LineBand == 8 then
-		reg = "DS3"
-	elseif xdsl2LineBand == 9 then
-		reg = "US3"
-	elseif xdsl2LineBand == 10 then
-		reg = "DS4"
-	elseif xdsl2LineBand == 11 then
-		reg = "US4"
+		local reg
+		if xdsl2LineBand == 1 then
+			reg = "(US)"
+		elseif xdsl2LineBand == 2 then
+			reg = "(DS)"
+		elseif xdsl2LineBand == 3 then
+			reg = "US0"
+		elseif xdsl2LineBand == 4 then
+			reg = "DS1"
+		elseif xdsl2LineBand == 5 then
+			reg = "US1"
+		elseif xdsl2LineBand == 6 then
+			reg = "DS2"
+		elseif xdsl2LineBand == 7 then
+			reg = "US2"
+		elseif xdsl2LineBand == 8 then
+			reg = "DS3"
+		elseif xdsl2LineBand == 9 then
+			reg = "US3"
+		elseif xdsl2LineBand == 10 then
+			reg = "DS4"
+		elseif xdsl2LineBand == 11 then
+			reg = "US4"
+		end
+		reg = name .. " " .. reg
+
+		-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
+		return coroutine.create(function ()
+			local result = ebm_session_read({ reg })
+			return result[1].int + ((result[1].int < 0x7ffffe) and 0 or (0x7ffffffe - 0x7ffffe))
+		end)
 	end
-	reg = name .. " " .. reg
-
-	-- EBM is 24bit so limit is 0x7ffffe and not 0x7ffffffe
-	return coroutine.create(function ()
-		local result = ebm_session_read({ reg })
-		return result[1].int + ((result[1].int < 0x7ffffe) and 0 or (0x7ffffffe - 0x7ffffe))
-	end)
-end
-xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten = function (request)
-	return xdsl2LineBandTableMIB._xdsl2LineBandStatus(request, "Line Attenuation")
-end
-xdsl2LineBandTableMIB.xdsl2LineBandStatusSigAtten = function (request)
-	return xdsl2LineBandTableMIB._xdsl2LineBandStatus(request, "Signal Attenuation")
-end
-xdsl2LineBandTableMIB.xdsl2LineBandStatusSnrMargin = function (request)
-	return xdsl2LineBandTableMIB._xdsl2LineBandStatus(request, "SNR Margin")
 end
 
 local mibview_xdsl2LineBandTable_load = {
---	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineBandTableMIB.xdsl2LineBand },			-- xdsl2LineBand (not-accessible)
-	[2]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineBandTableMIB.xdsl2LineBandStatusLnAtten },		-- xdsl2LineBandStatusLnAtten
-	[3]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineBandTableMIB.xdsl2LineBandStatusSigAtten },	-- xdsl2LineBandStatusSigAtten
-	[4]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineBandTableMIB.xdsl2LineBandStatusSnrMargin },	-- xdsl2LineBandStatusSnrMargin
+--	[1]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineBandTableMIB.xdsl2LineBand },				-- xdsl2LineBand (not-accessible)
+	[2]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineBandTableMIB._xdsl2LineBandStatus("Line Attenuation") },	-- xdsl2LineBandStatusLnAtten
+	[3]	= { ["type"] = agentx.VTYPE.Gauge32, data = xdsl2LineBandTableMIB._xdsl2LineBandStatus("Signal Attenuation") },	-- xdsl2LineBandStatusSigAtten
+	[4]	= { ["type"] = agentx.VTYPE.Integer, data = xdsl2LineBandTableMIB._xdsl2LineBandStatus("SNR Margin") },		-- xdsl2LineBandStatusSnrMargin
 }
 
 local xdsl2LineBandTable_entry = {unpack(vdsl2MIB)}
@@ -391,12 +384,12 @@ end
 ---- VDSL2-LINE-MIB::xdsl2ChannelStatusTable
 
 local xdsl2ChannelStatusTableMIB = {}
-xdsl2ChannelStatusTableMIB._direction = function (request)
+xdsl2ChannelStatusTableMIB.xdsl2ChStatusUnit = function (request)
 	return xdsl2LineBandTableMIB.xdsl2LineBand(request)
 end
 xdsl2ChannelStatusTableMIB.xdsl2ChStatusActDataRate = function (request)
 	local reg
-	if xdsl2ChannelStatusTableMIB._direction(request.name) == 1 then
+	if xdsl2ChannelStatusTableMIB.xdsl2ChStatusUnit(request) == 1 then
 		reg = "xdsl2ChStatusActDataRate0 (US)"
 	else
 		reg = "xdsl2ChStatusActDataRate2 (DS)"
@@ -408,7 +401,7 @@ xdsl2ChannelStatusTableMIB.xdsl2ChStatusActDataRate = function (request)
 end
 xdsl2ChannelStatusTableMIB.xdsl2ChStatusPrevDataRate = function (request)
 	local reg
-	if xdsl2ChannelStatusTableMIB._direction(request.name) == 1 then
+	if xdsl2ChannelStatusTableMIB.xdsl2ChStatusUnit(request) == 1 then
 		reg = "xdsl2ChStatusPrevDataRate0 (US)"
 	else
 		reg = "xdsl2ChStatusPrevDataRate2 (DS)"
@@ -463,7 +456,7 @@ end
 --
 -- > show controllers vdsl 0/0/0
 -- Controller VDSL 0/0/0 is UP
--- Daemon Status: UP 
+-- Daemon Status: UP
 -- XTU-R (DS) XTU-C (US)
 --
 -- Chip Vendor ID: 'META' 'IKNS'
@@ -473,7 +466,7 @@ end
 -- Modem Vendor Specific: 0x0000 0x2AB0
 -- Modem Vendor Country: 0xB500 0x37A0
 -- Serial Number Near: E80462D1B001 SFP-V5311-T-R 8431
--- Serial Number Far: ^A5u 
+-- Serial Number Far: ^A5u
 -- Modem Version Near: 1_62_8431 MT5311
 -- Modem Version Far: 6.7.0.15IK005010
 
