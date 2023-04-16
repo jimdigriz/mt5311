@@ -64,6 +64,7 @@ proto.fields.frame_response = ProtoField.framenum("ebm.response", "Response In",
 
 proto.experts.id = ProtoExpert.new("ebm.id.magic", "Request Id Magic", expert.group.SEQUENCE, expert.severity.NOTE)
 proto.experts.assert = ProtoExpert.new("ebm.assert", "Protocol", expert.group.ASSUMPTION, expert.severity.WARN)
+proto.experts.orphan = ProtoExpert.new("ebm.orphan", "Orphan", expert.group.PROTOCOL, expert.severity.NOTE)
 
 local f_plen = Field.new("ebm.hdr.payload_len")
 local f_dir = Field.new("ebm.hdr.dir")
@@ -174,7 +175,10 @@ function proto.dissector (tvb, pinfo, tree)
 	pinfo.cols.info:append(response and ": Response" or ": Request")
 
 	if pinfo.visited then
-		hdr_tree:add(proto.fields["frame_" .. (response and "request" or "response")], convlist[pinfo.number].partner):set_generated()
+		-- guard incase we catch mid-conversation and see only the response
+		if convlist[pinfo.number].partner then
+			hdr_tree:add(proto.fields["frame_" .. (response and "request" or "response")], convlist[pinfo.number].partner):set_generated()
+		end
 	else
 		-- convlist_pre is used to temporarily hold the request frame number
 		-- for the response to discover. It is keyed by 'dev' (server MAC
@@ -251,7 +255,7 @@ function proto.dissector (tvb, pinfo, tree)
 
 	local pi, pi_tvb
 	local offset = 0
-	local records = 0
+	local records
 	if response then
 		--  0                   1                   2                   3
 		--  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -266,7 +270,15 @@ function proto.dissector (tvb, pinfo, tree)
 		--    Note: only observed three (3) octets
 		--
 
-		local cmds = convlist[convlist[pinfo.number].partner].cmds
+		local cmds
+		if convlist[pinfo.number].partner then
+			records = 0
+			cmds = convlist[convlist[pinfo.number].partner].cmds
+		else
+			payload_tree:add_proto_expert_info(proto.experts.orphan)
+			cmds = {}
+		end
+
 		for i, cmd in pairs(cmds) do
 			records = records + 1
 
@@ -316,6 +328,7 @@ function proto.dissector (tvb, pinfo, tree)
 			convlist[pinfo.number].cmds = {}
 		end
 
+		records = 0
 		while offset < payload_len do
 			records = records + 1
 
@@ -359,7 +372,9 @@ function proto.dissector (tvb, pinfo, tree)
 		end
 	end
 
-	payload_tree:append_text(" [" .. tostring(records) .. " record(s)]")
+	if records then
+		payload_tree:append_text(" [" .. tostring(records) .. " record(s)]")
+	end
 
 	return len
 end
