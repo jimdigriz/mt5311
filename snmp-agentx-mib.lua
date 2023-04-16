@@ -52,6 +52,30 @@ ifTableMIB._ifLastChange = 0
 ifTableMIB.ifLastChange = function (request)
 	return ifTableMIB._ifLastChange
 end
+ifTableMIB.ifInOctets = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdslRtxChStatusRtErrorFreeBitsHi", "xdslRtxChStatusRtErrorFreeBitsLo" })
+		return bit32.band((result[1].int * (2^24)) + result[2].int, 2^32 - 1)
+	end)
+end
+ifTableMIB.ifInError = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdslRtxChStatusRtRtxUc" })
+		return result[1].int
+	end)
+end
+ifTableMIB.ifOutOctets = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdslRtxChStatusOtErrorFreeBitsHi", "xdslRtxChStatusOtErrorFreeBitsLo" })
+		return bit32.band((result[1].int * (2^24)) + result[2].int, 2^32 - 1)
+	end)
+end
+ifTableMIB.ifOutError = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdslRtxChStatusOtRtxUc" })
+		return result[1].int
+	end)
+end
 local function ifTable_wheel ()
 	ebm_session:read({ "PhyStatus(?)", "Link Time" }, coroutine.create(function(result)
 		local sysUpTime = ax_session:sysUpTime()
@@ -86,13 +110,20 @@ local mibview_ifTable_load = {
 	[7]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifAdminStatus
 	[8]	= { ["type"] = agentx.VTYPE.Integer, data = ifTableMIB.ifOperStatus },		-- ifOperStatus
 	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = ifTableMIB.ifLastChange },	-- ifLastChange
-	-- see for loop below
+	[10]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifInOctets },		-- ifInOctets
+	[11]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInUcastPkts
+	[12]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInNUcastPkts (deprecated)
+	[13]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInDiscards
+	[14]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifInErrors },		-- ifInErrors
+	[15]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInUnknownProtos
+	[16]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifOutOctets },		-- ifOutOctets
+	[17]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifOutUcastPkts
+	[18]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifOutNUcastPkts (deprecated)
+	[19]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifOutDiscards
+	[20]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifOutErrors },		-- ifOutErrors
 	[21]	= { ["type"] = agentx.VTYPE.Gauge32, data = 0 },				-- ifOutQLen (deprecated)
 	[22]	= { ["type"] = agentx.VTYPE.ObjectIdentifer, data = {0,0} }			-- ifSpecific (deprecated)
 }
-for i=10,20 do
-	mibview_ifTable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
-end
 
 local ifTable = {1,3,6,1,2,1,2,2}
 local ifTable_entry = {unpack(ifTable)}
@@ -117,6 +148,18 @@ local ifXTableMIB = {}
 ifXTableMIB.ifName = function (request)
 	return "ebm" .. ebm_session.addr_print .. "@" .. ebm_session.iface
 end
+ifXTableMIB.ifHCInOctets = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdslRtxChStatusRtErrorFreeBitsHi", "xdslRtxChStatusRtErrorFreeBitsLo" })
+		return (result[1].int * (2^24)) + result[2].int
+	end)
+end
+ifXTableMIB.ifHCOutOctets = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "xdslRtxChStatusOtErrorFreeBitsHi", "xdslRtxChStatusOtErrorFreeBitsLo" })
+		return (result[1].int * (2^24)) + result[2].int
+	end)
+end
 ifXTableMIB.ifHighSpeed = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({ "xdsl2LineStatusAttainableRateDs" })
@@ -126,6 +169,14 @@ end
 
 local mibview_ifXTable_load = {
 	[1]	= { ["type"] = agentx.VTYPE.OctetString, data = ifXTableMIB.ifName },		-- ifName
+	[6]	= { ["type"] = agentx.VTYPE.Counter64, data = ifXTableMIB.ifHCInOctets },	-- ifHCInOctets
+	[7]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCInUcastPkts
+	[8]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCInMulticastPkts
+	[9]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCInBroadcastPkts
+	[10]	= { ["type"] = agentx.VTYPE.Counter64, data = ifXTableMIB.ifHCOutOctets },	-- ifHCOutOctets
+	[11]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCOutUcastPkts
+	[12]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCOutMulticastPkts
+	[13]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCOutBroadcastPkts
 --	[14]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifLinkUpDownTrapEnable (FIXME: should be enabled)
 	[15]	= { ["type"] = agentx.VTYPE.Gauge32, data = ifXTableMIB.ifHighSpeed },		-- ifHighSpeed
 	[16]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifPromiscuousMode
@@ -133,12 +184,6 @@ local mibview_ifXTable_load = {
 	[18]	= { ["type"] = agentx.VTYPE.OctetString, data = "" },				-- ifAlias
 	[19]	= { ["type"] = agentx.VTYPE.TimeTicks, data = 0 },				-- ifCounterDiscontinuityTime
 }
-for i=2,5 do
-	mibview_ifXTable_load[i] = { ["type"] = agentx.VTYPE.Counter32, data = 0 }
-end
-for i=6,13 do
-	mibview_ifXTable_load[i] = { ["type"] = agentx.VTYPE.Counter64, data = 0 }
-end
 
 local ifXTable = {1,3,6,1,2,1,31,1,1}
 local ifXTable_entry = {unpack(ifXTable)}

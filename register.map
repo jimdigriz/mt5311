@@ -154,8 +154,8 @@
 
 # G.inp status table of line 1
 # Frames 445 - 446
-0x007f75	xdslRtxChStatusOtUnit						# "\x00\x00\x01"
-0x007f8b	xdslRtxChStatusRtUnit						# "\x00\x00\x02"
+0x007f75	xdslRtxChStatusOtUnit						# "\x00\x00\x01" - xTU-O
+0x007f8b	xdslRtxChStatusRtUnit						# "\x00\x00\x02" - xTU-R
 0x007f76	xdslRtxChStatusOtRtxUsed					# "\x00\x00\x00"
 0x007f8c	xdslRtxChStatusRtRtxUsed					# "\x00\x00\x00"
 0x007f77	xdslRtxChStatusOtEtr						# "\x00\x00\x00"
@@ -170,26 +170,26 @@
 0x007f91	xdslRtxChStatusRtActInpRein					# "\x00\x00\x00"
 0x007f7c	xdslRtxChStatusOtActDelayRtx					# "\x00\x00\x00"
 0x007f92	xdslRtxChStatusRtActDelayRtx					# "\x00\x00\x00"
-0x007f7d	xdslRtxChStatusOtLeftrsHi					# "\x00\x00\x00"
-0x007f93	xdslRtxChStatusRtLeftrsHi					# "\x00\x00\x00"
-0x007f7e	xdslRtxChStatusOtLeftrsLo					# "\x00\x12\x51"
-0x007f94	xdslRtxChStatusRtLeftrsLo					# "\x01\xA8\x51"
+0x007f7d	xdslRtxChStatusOtLeftrsHi					# "\x00\x00\x00" (Low Error-Free Throughput Rate Second)
+0x007f93	xdslRtxChStatusRtLeftrsHi					# "\x00\x00\x00" (Low Error-Free Throughput Rate Second)
+0x007f7e	xdslRtxChStatusOtLeftrsLo					# "\x00\x12\x51" (Low Error-Free Throughput Rate Second)
+0x007f94	xdslRtxChStatusRtLeftrsLo					# "\x01\xA8\x51" (Low Error-Free Throughput Rate Second)
 0x007f7f	xdslRtxChStatusOtErrorFreeBitsHi				# "\x00\x00\x04"
 0x007f95	xdslRtxChStatusRtErrorFreeBitsHi				# "\x00\x00\xA4"
 0x007f80	xdslRtxChStatusOtErrorFreeBitsLo				# "\x53\x58\xB9"
 0x007f96	xdslRtxChStatusRtErrorFreeBitsLo				# "\x6F\xF5\xB7"
-0x007f81	xdslRtxChStatusOtRtxUc						# "\x20\x6F\x58"
-0x007f97	xdslRtxChStatusRtRtxUc						# "\x57\x79\xFB"
-0x007f82	xdslRtxChStatusOtRtxC						# "\x01\xC7\x25"
-0x007f98	xdslRtxChStatusRtRtxC						# "\x5B\xF5\x6E"
-0x007f83	xdslRtxChStatusOtRtxTx						# "\x89\x5D\xC5"
-0x007f99	xdslRtxChStatusRtRtxTx						# "\x00\x43\x79"
+0x007f81	xdslRtxChStatusOtRtxUc						# "\x20\x6F\x58" (Uncorrected DTUs)
+0x007f97	xdslRtxChStatusRtRtxUc						# "\x57\x79\xFB" (Uncorrected DTUs)
+0x007f82	xdslRtxChStatusOtRtxC						# "\x01\xC7\x25" (Corrected[?] DTUs)
+0x007f98	xdslRtxChStatusRtRtxC						# "\x5B\xF5\x6E" (Corrected[?] DTUs)
+0x007f83	xdslRtxChStatusOtRtxTx						# "\x89\x5D\xC5" (Retransmitted DTUs)
+0x007f99	xdslRtxChStatusRtRtxTx						# "\x00\x43\x79" (Retransmitted DTUs)
 0x007f84	xdslRtxChStatusOtRtxSupport					# "\x00\x00\x00"
 0x007f9a	xdslRtxChStatusRtRtxSupport					# "\x00\x00\x00"
 0x007f85	xdslRtxChStatusOtActNdr (US)					# "\x00\x19\x82" = 6530 (kbps) [Actual Ndr Data Rate]
 0x007f9b	xdslRtxChStatusRtActNdr (US)					# "\x00\x19\x82" = 6530 (kbps) [Actual Data Rate]
-0x007f86	xdslRtxChStatusOtPreviousEtr					# "\x00\x00\x00"
-0x007f9c	xdslRtxChStatusRtPreviousEtr					# "\x00\xA8\xB6"
+0x007f86	xdslRtxChStatusOtPreviousEtr					# "\x00\x00\x00" (Previous Effective Throughput Rate)
+0x007f9c	xdslRtxChStatusRtPreviousEtr					# "\x00\xA8\xB6" (Previous Effective Throughput Rate)
 
 # Additional Mibs
 # Frames 447 - 448
@@ -1326,13 +1326,13 @@
 0x006ff4	Line Attenuation DS3						# "\x00\x02\xcf" = 719 (0.1 dB) => 71.9 dB
 0x006fe8	Line Attenuation US4						# "\x7f\xff\xfe" = NA (0.1 dB)
 0x006ff8	Line Attenuation DS4						# "\x7f\xff\xfe" = NA (0.1 dB)
-0x007f09	Showtime CV							# "\x00\x00\x00" = 0
-0x007f08	Showtime FEC							# "\x00\x00\x00" = 0
-0x007f0a	Showtime Fecs							# "\x00\x00\x00" = 0
-0x007f0b	Showtime Es							# "\x00\x00\x00" = 0
-0x007f0c	Showtime Ses							# "\x00\x00\x00" = 0
-0x007f0d	Showtime Loss							# "\x00\x00\x00" = 0
-0x007f0e	Showtime Uas							# "\x00\x00\x00" = 0
+0x007f09	Showtime CV							# "\x00\x00\x00" = 0 (Code Violation)
+0x007f08	Showtime FEC							# "\x00\x00\x00" = 0 (Forward Error Correction)
+0x007f0a	Showtime Fecs							# "\x00\x00\x00" = 0 (Forward Error Correction Second)
+0x007f0b	Showtime Es							# "\x00\x00\x00" = 0 (Errored Second)
+0x007f0c	Showtime Ses							# "\x00\x00\x00" = 0 (Severely Errored Second)
+0x007f0d	Showtime Loss							# "\x00\x00\x00" = 0 (Loss of Signal Second)
+0x007f0e	Showtime Uas							# "\x00\x00\x00" = 0 (Unavailable Second)
 0x007c1f	15M Elapsed time (US)						# "\x00\x02\xfd" = 765 secs
 0x007c30	15M Elapsed time (DS)						# "\x00\x02\xfd" = 765 secs
 0x007c20	15M FECS (US)							# "\x00\x00\x01" = 1
