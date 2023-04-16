@@ -16,8 +16,8 @@
 0x006e6f	xdslTwConfig3							# "\x1C\x62\xC0"
 0x006ecc	xdslTwConfig4							# "\x39\x89\x05"
 0x006d2b	xdslMetanoiaUs0PsdLimit						# "\xFF\xFE\x20"
-0x007cf6	xdslGhsConfOtCarrierSet						# "\x00\x00\x01"
-0x007cf7	xdslGhsConfRtCarrierSet						# "\x00\x00\x00"
+0x007cf6	xdslGhsConfOtCarrierSet						# "\x00\x00\x01" (Ot = xTU-C)
+0x007cf7	xdslGhsConfRtCarrierSet						# "\x00\x00\x00" (Rt = xTU-R)
 0x006d73	ModemErrOvrflow							# "\x00\x00\x00"
 
 # Interface table of line 1
