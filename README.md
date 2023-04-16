@@ -94,9 +94,9 @@ To set up your OS, in additional to the steps above, run:
 
        # mib-2 interfaces
        view   systemonly  included   .1.3.6.1.2.1.2
-       # ifMIB
+       # IF-MIB
        view   systemonly  included   .1.3.6.1.2.1.31
-       # vdsl2MIB
+       # VDSL2-LINE-MIB
        view   systemonly  included   .1.3.6.1.2.1.10.251
 
    Restart `snmpd` with:
