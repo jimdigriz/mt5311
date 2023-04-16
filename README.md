@@ -121,6 +121,12 @@ Where:
 
 If there is no error it means everything is are working, otherwise recheck that you followed the installation instructions so far correctly.
 
+...
+
+TODO include `systemd`/`service` integration
+
+### SNMP Client
+
 Assuming that you have your SNMP client and MIBs correctly set up on your workstation (`apt get install --no-install-recommends snmp snmp-mibs-downloader`), you should be able to see the EBM 'interface' appear using something like the following commands (you may need to adjust your authentication settings):
 
     snmptable -m ALL -Ci -Cw ${COLUMNS:-80} -v 2c -c public 192.0.2.1 IF-MIB::ifTable
@@ -135,9 +141,9 @@ Assuming that you have your SNMP client and MIBs correctly set up on your workst
 
 **N.B.** [ignore the warnings `Wrong Type (should be BITS): Opaque: 1234`](https://github.com/jimdigriz/mt5311/issues/1)
 
-...
+### LibreNMS
 
-TODO include `systemd`/`service` integration
+To use this you will need to enable the 'xDSL' modules for both Discovery and the Poller in the 'Global Settings' menu.
 
 ## Wireshark
 
