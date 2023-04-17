@@ -145,6 +145,9 @@ function M:process ()
 	end
 	if not result then return true end
 	local requestID = result.requestID == SEQ.HELLO_SERVER and 0 or result.requestID
+	if not self._requests[requestID] then
+		return false, "unexpected requestID"
+	end
 	local co = self._requests[requestID].co
 	self._requests[requestID] = nil
 	coroutine.resume(co, result)
