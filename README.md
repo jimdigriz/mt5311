@@ -14,7 +14,9 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
     * Forums:
        * [User experience - ALLNET ALL4781-VDSL2-SFP / Switch Modul (Mini-GBIC), VDSL2](https://forum.turris.cz/t/user-experience-allnet-all4781-vdsl2-sfp-switch-modul-mini-gbic-vdsl2/)
        * [Proscend 180-t vdsl2 SFP Support](https://forum.netgate.com/topic/165393/proscend-180-t-vdsl2-sfp-support/)
-    * [Dumping the EEPROM](https://github.com/TheSkorm/Proscend--180-T/wiki)
+    * GitHub Projects
+       * [ALLNET ALL4781-VDSL2-SFP inofficial documentation and software repository](https://github.com/renne/all4781)
+       * [Dumping the EEPROM](https://github.com/TheSkorm/Proscend--180-T/wiki)
 
 # Utilities
 
@@ -70,6 +72,8 @@ You should look at the [`register.map`](./register.map) file for other registers
 You can use this tool to scan all the register space:
 
     seq 0x7000 0x7fff | xargs -n1 printf "0x%x\n" | sudo xargs -n 20 lua /opt/mt5311/ebm-read.lua eth1 00:11:22:33:44:55
+
+**N.B.** this may brick your device, I have no idea what all the registers do, so I suggest you stick to ranges covered in [`register.map`](./register.map)
 
 ## SNMP
 
