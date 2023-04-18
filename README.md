@@ -65,7 +65,7 @@ To use it, run as `root`:
 
 The output is in TSV (tab separated variable) format.
 
-You should look at the [`register.map`](./register.map) file for other registers that you can read, but as well as the names you can provide the register address (integer or hexidecimal) directly.
+You should look at the [`register.map`](./register.map) file for other registers that you can read, but as well as the names you can provide the register address (integer or hexadecimal) directly.
 
 ### Scanning
 
@@ -147,7 +147,7 @@ Assuming that you have your SNMP client and MIBs correctly set up on your workst
 
 ### LibreNMS
 
-To use this you will need to enable the 'xDSL' modules for both Discovery and the Poller in the 'Global Settings' menu.
+To use this you will need to enable the 'xDSL' module for both 'Discovery' and 'Poller' in the 'Global Settings' menu.
 
 ## Wireshark
 
