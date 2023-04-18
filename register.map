@@ -26,7 +26,7 @@
 0x006c50	CfgM2UtpCfgReg							# "\x04\x00\x80"
 0x006e36	CfgM2QosfrVd							# "\x00\x0C\x02"
 0x006d80	CfgPll1Ctl							# "\x01\x50\x22"
-0x006c3c	xdslCfgHwConfig							# "\x00\x00\x02"
+0x006c3c	xdslCfgHwConfig							# "\x00\x00\x02" (1 = xTU-C, 2 = xTU-R) ('Port Status'->'Mode' in DSLmonitor and shows 'RT')
 
 # Band profile table of line 1
 # Frames 429 - 430
