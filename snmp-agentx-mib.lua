@@ -58,6 +58,12 @@ ifTableMIB.ifInOctets = function (request)
 		return bit32.band((result[1].int * (2^24)) + result[2].int, 2^32 - 1)
 	end)
 end
+ifTableMIB.ifInUcastPkts = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "CPE Packet Count (DS)" })
+		return result[1].int
+	end)
+end
 ifTableMIB.ifInError = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({ "xdslRtxChStatusRtRtxUc" })
@@ -68,6 +74,12 @@ ifTableMIB.ifOutOctets = function (request)
 	return coroutine.create(function ()
 		local result = ebm_session_read({ "xdslRtxChStatusOtErrorFreeBitsHi", "xdslRtxChStatusOtErrorFreeBitsLo" })
 		return bit32.band((result[1].int * (2^24)) + result[2].int, 2^32 - 1)
+	end)
+end
+ifTableMIB.ifOutUcastPkts = function (request)
+	return coroutine.create(function ()
+		local result = ebm_session_read({ "CPE Packet Count (US)" })
+		return result[1].int
 	end)
 end
 ifTableMIB.ifOutError = function (request)
@@ -111,13 +123,13 @@ local mibview_ifTable_load = {
 	[8]	= { ["type"] = agentx.VTYPE.Integer, data = ifTableMIB.ifOperStatus },		-- ifOperStatus
 	[9]	= { ["type"] = agentx.VTYPE.TimeTicks, data = ifTableMIB.ifLastChange },	-- ifLastChange
 	[10]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifInOctets },		-- ifInOctets
-	[11]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInUcastPkts
+	[11]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifInUcastPkts },	-- ifInUcastPkts
 	[12]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInNUcastPkts (deprecated)
 	[13]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInDiscards
 	[14]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifInErrors },		-- ifInErrors
 	[15]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifInUnknownProtos
 	[16]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifOutOctets },		-- ifOutOctets
-	[17]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifOutUcastPkts
+	[17]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifOutUcastPkts },	-- ifOutUcastPkts
 	[18]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifOutNUcastPkts (deprecated)
 	[19]	= { ["type"] = agentx.VTYPE.Counter32, data = 0 },				-- ifOutDiscards
 	[20]	= { ["type"] = agentx.VTYPE.Counter32, data = ifTableMIB.ifOutErrors },		-- ifOutErrors
@@ -170,11 +182,11 @@ end
 local mibview_ifXTable_load = {
 	[1]	= { ["type"] = agentx.VTYPE.OctetString, data = ifXTableMIB.ifName },		-- ifName
 	[6]	= { ["type"] = agentx.VTYPE.Counter64, data = ifXTableMIB.ifHCInOctets },	-- ifHCInOctets
-	[7]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCInUcastPkts
+	[7]	= { ["type"] = agentx.VTYPE.Counter64, data = ifTableMIB.ifInUcastPkts },	-- ifHCInUcastPkts
 	[8]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCInMulticastPkts
 	[9]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCInBroadcastPkts
 	[10]	= { ["type"] = agentx.VTYPE.Counter64, data = ifXTableMIB.ifHCOutOctets },	-- ifHCOutOctets
-	[11]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCOutUcastPkts
+	[11]	= { ["type"] = agentx.VTYPE.Counter64, data = ifTableMIB.ifOutUcastPkts },	-- ifHCOutUcastPkts
 	[12]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCOutMulticastPkts
 	[13]	= { ["type"] = agentx.VTYPE.Counter64, data = 0 },				-- ifHCOutBroadcastPkts
 --	[14]	= { ["type"] = agentx.VTYPE.Integer, data = 1 },				-- ifLinkUpDownTrapEnable (FIXME: should be enabled)
