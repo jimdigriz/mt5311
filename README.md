@@ -189,9 +189,19 @@ You can see a [video of the official tools in use](https://youtu.be/fdCl3nxgEyA)
 
 ### DSLmanager
 
+To flash your SFP you follow the process:
+
  1. install [*both* x64 and x86 version of VS C++](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)
- 1. ...
- 1. I used the latest `*_8463` named image
- 1. ...
+ 1. run `WinPcap_4_1_3.exe`
+ 1. run 'DSLmanager.exe'
+ 1. select the NIC that the SFP is plugged into
+ 1. set the 'Device MAC' to the MAC address printed on your SFP
+ 1. click on the 'EBM' button
+ 1. you will be asked to select a `.b` binary firmware file
+      * I used `180T-L4TA-8463.b` with the SHA256 `2e7a927d4d545c029510522dde6f6e27a047cd494295899cb3b8d43ed6baa9fb`
+      * `8463` refers to the version number, bigger is better
+ 1. now wait as the flashing takes place
+      * this will not take long (a minute or so) but do not worry if it looks to have stalled for a while
+      * scroll to the bottom of the log window and wait for it to display a "Upgrade Flash Success"
  1. after upgrade, power cycle SFP (unplug, put it back in)
-     * `shutdown` and `no shutdown`ing the switch interface may not be enough
+     * `shutdown` and `no shutdown`ing the switch interface is not enough to power cycle it
