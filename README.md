@@ -164,11 +164,19 @@ If it works, it looks like:
 
 ### Sample Data
 
-[`dump-soc.txt.gz`](./dump-soc.txt.gz) is the output of the "Dump SOC" button whilst [`dump-soc.pcap.gz`](./dump-soc.pcap.gz) is a packet capture during running it; [`register.map`](./register.map) is a listing of the register addresses and their purpose manually derived from these two files.
+Two sets of sample data is provided that shows the output of using the "Dump SOC" button available in DSLmonitor. The `dump-soc.v1234.txt.gz` is the saved output of this process whilst `dump-soc.v1234.pcap.gz` is a packet capture during running it; [`register.map`](./register.map) is a listing of the register addresses and their purpose manually derived from these samples.
 
-**N.B** packet capture includes connecting to the SFP and having 'Port Status' section open and running for a while
-
-It looks like the "Dump SOC" starts at (roughly) frame number 409 with the value of `xdslTwConfig` being in frame 426.
+ * version 8463:
+     * files:
+         * [`dump-soc.v8463.txt.gz`](./dump-soc.v8463.txt.gz)
+         * [`dump-soc.v8463.pcap.gz`](./dump-soc.v8463.pcap.gz)
+     * packet capture includes connecting to the SFP
+ * version 8255:
+     * files:
+         * [`dump-soc.v8255.txt.gz`](./dump-soc.v8255.txt.gz)
+         * [`dump-soc.v8255.pcap.gz`](./dump-soc.v8255.pcap.gz)
+     * packet capture includes connecting to the SFP and having 'Port Status' section open and running for a while
+     * "Dump SOC" starts at (roughly) frame number 409 with the value of `xdslTwConfig` being in frame 426
 
 ## Official
 
