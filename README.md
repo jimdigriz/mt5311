@@ -150,6 +150,8 @@ Assuming that you have your SNMP client and MIBs correctly set up on your workst
 
 To use this you will need to enable the 'xDSL' module for both 'Discovery' and 'Poller' in the 'Global Settings' menu.
 
+As a recommendation, you should also index your interfaces based on `ifName` which is stable, and not `ifIndex`.
+
 ## Wireshark
 
 To use a basic Ethernet Boot & Management (EBM) protocol dissector:
