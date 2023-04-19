@@ -164,9 +164,9 @@ If it works, it looks like:
 
 ### Sample Data
 
-Two sets of sample data is provided that shows the output of using the "Dump SOC" button available in DSLmonitor. The `dump-soc.v1234.txt.gz` is the saved output of this process whilst `dump-soc.v1234.pcap.gz` is a packet capture during running it; [`register.map`](./register.map) is a listing of the register addresses and their purpose manually derived from these samples.
+Included are several PCAPs capturing interactions with the SFP using DSLmonitor:
 
- * output of using the "Dump SOC" button available in DSLmonitor:
+ * output of using the "Dump SOC" button available in DSLmonitor ([`register.map`](./register.map) is a listing of the register addresses and their purpose manually derived from these samples):
      * version 8463:
          * files:
              * [`dump-soc.v8463.txt.gz`](./samples/dump-soc.v8463.txt.gz)
