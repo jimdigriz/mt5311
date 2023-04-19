@@ -8,6 +8,7 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
     * [ALLNET ALL4781-VDSL2-SFP](https://www.allnet.de/en/allnet-brand/produkte/modems-router/sfp-vdsl2-bridge-modem)
  * Useful non-official public materials regarding the modem:
     * [Proscend SOS/ROC Firmware Update](https://youtu.be/fdCl3nxgEyA)
+    * [RevK®'s ramblings - VDSL SFP and FireBrick](https://www.revk.uk/2018/01/vdsl-sfp-and-firebrick.html)
     * Duxtel:
        * [PS180-T - recommended applications and limitations](https://shop.duxtel.com.au/help/en-gb/11-product-advisory/38-ps180-t-recommended-applications-and-limitations)
        * [Notice regarding upcoming SOS/ROC problems](https://www.facebook.com/duxtel/posts/if-you-use-proscend-ps180-t-vdsl-modem-on-nbn-services-you-may-already-be-aware-/1907876142708182/)
