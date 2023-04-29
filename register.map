@@ -154,7 +154,7 @@
 
 # G.inp status table of line 1
 # Frames 445 - 446
-0x007f75	xdslRtxChStatusOtUnit						# "\x00\x00\x01" - xTU-O
+0x007f75	xdslRtxChStatusOtUnit						# "\x00\x00\x01" - xTU-C
 0x007f8b	xdslRtxChStatusRtUnit						# "\x00\x00\x02" - xTU-R
 0x007f76	xdslRtxChStatusOtRtxUsed					# "\x00\x00\x00"
 0x007f8c	xdslRtxChStatusRtRtxUsed					# "\x00\x00\x00"
