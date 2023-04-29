@@ -170,7 +170,12 @@ If it works, it looks like:
 Included are several PCAPs capturing interactions with the SFP using DSLmonitor:
 
  * output of using the "Dump SOC" button available in DSLmonitor ([`register.map`](./register.map) is a listing of the register addresses and their purpose manually derived from these samples):
-     * version 8463:
+     * version 8570 - supposedly actually implements ROC and SOS support:
+         * files:
+             * [`dump-soc.v8570.txt.gz`](./samples/dump-soc.v8570.txt.gz)
+             * [`dump-soc.v8570.pcap.gz`](./samples/dump-soc.v8570.pcap.gz)
+         * packet capture includes connecting to the SFP
+     * version 8463 - ignores CO requesting ROC and SOS support:
          * files:
              * [`dump-soc.v8463.txt.gz`](./samples/dump-soc.v8463.txt.gz)
              * [`dump-soc.v8463.pcap.gz`](./samples/dump-soc.v8463.pcap.gz)
@@ -183,6 +188,15 @@ Included are several PCAPs capturing interactions with the SFP using DSLmonitor:
          * "Dump SOC" starts at (roughly) frame number 409 with the value of `xdslTwConfig` being in frame 426
   * [capture of the SFP disconnecting us when another client connects](./samples/booted-off.pcap.gz)
   * [clicking the 'Disconnect' button in DSLmonitor whilst the 'Port Status' section open, waiting a while, clicking 'Connect' and then waiting till showtime](./samples/reconnect.pcap.gz)
+
+#### Acronyms
+
+ * **CO:** Central Office (ie. DSLAM/exchange)
+     * elsewhere referred to as 'xTU-C' (central) and 'Ot'
+ * **CPE:** Customer Premises Equipment (ie. user modem)
+     * elsewhere referred to as 'xTU-R' (remote) and 'Rt'
+ * **SOS (Save Our Showtime):** rapidly responds to spontaneous changes in copper network conditions which would typically result in a dropout
+ * **ROC (Robust Overhead Channel):** complementary feature to SOS which enables CO to maintain connectivity with your modem in the event of spontaneous changes in copper network conditions
 
 ## Official
 
@@ -212,11 +226,14 @@ To flash your SFP you follow the process:
  1. set the 'Device MAC' to the MAC address printed on your SFP
  1. click on the 'EBM' button
  1. you will be asked to select a `.b` binary firmware file
-      * I used `180T-L4TA-8463.b` with the SHA256 `2e7a927d4d545c029510522dde6f6e27a047cd494295899cb3b8d43ed6baa9fb`
-      * `8463` refers to the version number, bigger is better
+      * firmwares I have used:
+          * `SFP_180-T_SOS_ROC.b` (aka version 8570) with the SHA256 `00c5b9a93d2ef09b19470a53cb8eb4f390f51bc8264fbb761e5dc9853dd4e699`
+          * `180T-L4TA-8463.b` with the SHA256 `2e7a927d4d545c029510522dde6f6e27a047cd494295899cb3b8d43ed6baa9fb`
+      * `8463` refers to the version number, bigger is (usually) better
  1. now wait as the flashing takes place
-      * this will not take long (a minute or so) but do not worry if it looks to have stalled for a while
+      * this will not take long (a minute or so) but do not worry as the window remains unresponsible for the duration
       * scroll to the bottom of the log window and wait for it to display a "Upgrade Flash Success"
+         * if it fails, I have seen this once and your mileage may vary, *unplug* the SFP and reseat it, close `DSLmanager.exe` and repeat the process
  1. close DSLmanager
  1. after upgrade, power cycle SFP (unplug, put it back in)
      * `shutdown` and `no shutdown`ing the switch interface is not enough to power cycle it
