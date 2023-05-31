@@ -1,5 +1,11 @@
 Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
 
+## Review
+
+I personally am happy with the two 180-T's I purchased; one plugged into a [Mikrotik hAP ac](https://mikrotik.com/product/RB962UiGS-5HacT2HnT) and the other into a [Cisco WS-C3560X-24P](https://www.cisco.com/c/en/us/products/collateral/switches/catalyst-3560-x-series-switches/data_sheet_c78-584733.html). I received very similar VDSL2 sync speeds to a 'regular' router on both lines (70Mbps and 40Mbps respectively) even on the original firmware supplied.
+
+Unfortunately since obtaining FTTP, BT Openreach will no longer allow me to continue any FTTC service and so am no longer able to continue development of this project.
+
 ## Related Links
 
  * VDSL2 SFP Modem:
