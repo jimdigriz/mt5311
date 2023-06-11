@@ -4,7 +4,7 @@ Utilities for working with Metanoia/Proscend VDSL2 SFP Modems.
 
 I personally am happy with the two 180-T's I purchased; one plugged into a [Mikrotik hAP ac](https://mikrotik.com/product/RB962UiGS-5HacT2HnT) and the other into a [Cisco WS-C3560X-24P](https://www.cisco.com/c/en/us/products/collateral/switches/catalyst-3560-x-series-switches/data_sheet_c78-584733.html). I received very similar VDSL2 sync speeds to a 'regular' router on both lines (70Mbps and 40Mbps respectively) even on the original firmware supplied.
 
-Unfortunately since obtaining FTTP, BT Openreach will no longer allow me to continue any FTTC service and so am no longer able to continue development of this project.
+Unfortunately since obtaining FTTP, BT Openreach will no longer allow me to continue any FTTC service and so it is difficult for me to significantly continue development of this project. I do welcome contributions from others and even bug reports.
 
 ## Related Links
 
@@ -237,7 +237,7 @@ To flash your SFP you follow the process:
           * `180T-L4TA-8463.b` with the SHA256 `2e7a927d4d545c029510522dde6f6e27a047cd494295899cb3b8d43ed6baa9fb`
       * `8463` refers to the version number, bigger is (usually) better
  1. now wait as the flashing takes place
-      * this will not take long (a minute or so) but do not worry as the window remains unresponsible for the duration
+      * this will not take long (a minute or so) but do not worry as the window remains unresponsive for the duration
       * scroll to the bottom of the log window and wait for it to display a "Upgrade Flash Success"
          * if it fails, I have seen this once and your mileage may vary, *unplug* the SFP and reseat it, close `DSLmanager.exe` and repeat the process
  1. close DSLmanager
