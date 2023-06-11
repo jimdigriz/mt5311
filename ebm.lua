@@ -92,21 +92,6 @@ function M:session (t)
 	self._requests = {}
 
 	self._producer = self:_producer_co()
-	self._consumer = function (result, cb)
-		if status then
-			if type(response) == "function" then
-				status, response = pcall(function() return response(result) end)
-			end
-			if type(response) == "thread" then
-				status, response = coroutine.resume(response, result)
-			end
-		end
-		if status and type(response) == "table" then
-			cb(response)
-		else
-			error("consumer error: " .. response)
-		end
-	end
 
 	-- handshake
 	-- TODO check responses
